@@ -1,0 +1,24 @@
+# Default configuration
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+tab_width = 2
+
+# Markdown files
+[*.{md}]
+indent_size = 2
+tab_width = 2
+
+# D files
+[*.{d}]
+guidelines = 120, 140
+dfmt_template_constraint_style = conditional_newline
+dfmt_align_switch_statements = false
+max_line_length = 180
+dfmt_soft_max_line_length = 80
+dfmt_brace_style = stroustrup
+dfmt_keep_line_breaks = true
