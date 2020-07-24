@@ -128,7 +128,7 @@ struct CrawlEvents {
       auto projectId = cast(int) event["project_id"].integer;
       auto ref_ = push["ref"].str;
       auto commitId = push["commit_to"].str;
-      if (!registry.hasProjectRef(projectId, ref_))
+      if (!registry.hasProjectRef(projectId, ref_, commitId))
         app.put(FetchVersionedPackageFile(projectId, ref_, commitId));
     }
     auto chunks = app.data

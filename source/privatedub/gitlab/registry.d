@@ -87,12 +87,12 @@ public:
     return false;
   }
 
-  bool hasProjectRef(int projectId, string ref_) shared {
+  bool hasProjectRef(int projectId, string ref_, string commitId) shared {
     with (lock()) {
       import std.algorithm : canFind;
 
       return packages.byValue.canFind!(p => p.projectId == projectId
-          && p.versions.canFind!(v => v.ref_ == ref_));
+          && p.versions.canFind!(v => v.ref_ == ref_ && v.commitId == commitId));
     }
   }
 
@@ -110,11 +110,14 @@ public:
 
   private void addVersionedPackage(int projectId, VersionedPackage p) shared {
     with (lock()) {
-      import std.algorithm : canFind;
+      import std.algorithm : canFind, countUntil;
 
       if (auto pack = p.recipe.name in packages) {
-        if (!pack.versions.canFind!(v => v.ref_ == p.ref_))
+        auto idx = pack.versions.countUntil!(v => v.ref_ == p.ref_);
+        if (idx == -1)
           pack.versions = pack.versions ~ p;
+        else
+          pack.versions[idx] = p;
         return;
       }
       packages[p.recipe.name] = GitlabDubPackage(projectId, p.recipe.name, [p]);
