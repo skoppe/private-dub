@@ -67,17 +67,12 @@ public:
   }
 
   string getPrefix() {
-    return config.hostname;
+    return config.hostname ~ ".";
   }
 
   PackageMeta getPackageMeta(string name) {
     import std.algorithm : startsWith;
 
-    auto fullname = name;
-    if (name.startsWith(config.hostname))
-      name = name[config.hostname.length + 1 .. $];
-    else
-      fullname = config.hostname ~ "/" ~ name;
     return PackageMeta(this, name, packages[name].versions);
   }
 
