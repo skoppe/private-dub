@@ -18,9 +18,46 @@ dependency "gitlab.example.com/another-project" version="~>1.2.3"
 dependency "vibe-d" version="~>3.4.5"
 ```
 
-Just point dub to your registry and be happy ever after. `dub build --registry=https://private-dub.example.com`. Or look at the settings page on the code.dlang.org documentation section how to set the registry system-wide.
+Just point dub to your registry and be happy ever after. `dub build --registry=https://private-dub.example.com`.
 
 NOTE: Because this side-steps the official registry, package stats on code.dlang.org obviously won't be incremented.
+
+## Settings registry via settings.json
+
+Alternatively you can create a `settings.json` with the following:
+
+{
+	"registryUrls": ["https://private-dub.example.com"],
+}
+
+The file settings.json can be located in different locations. Last item in list has highest priority.
+
+#### Windows
+
+- %ProgramData%\dub\settings.json
+- <dub executable folder>\..\etc\dub\settings.json
+- %APPDATA%\dub\settings.json
+- %ROOT_PACKAGE_DIR%\dub.settings.json
+
+#### Posix
+
+- /var/lib/dub/settings.json
+- <dub executable folder>/../etc/dub/settings.json
+- ~/.dub/settings.json
+- $ROOT_PACKAGE_DIR/dub.settings.json
+
+
+## Credendials
+
+If you have repositories on your SCM that have limited access, you need pass credentials.
+
+Currently the access token is passed as part of the registry's uri. E.g. `dub --registry=https://private-dub.example.com/token/<access-token>` or in your `settings.json`.
+
+The advantage is that it reuses your SCM permissions you already have. The downside is that the application currently only supports one private SCM with credentials, and that your access_token is either stored in plain-text in a file or entered via the command line.
+
+The application itself performs no checks on the token, it simply passes it along in the redirect to your SCM when dub requests a download uri. (This means that the api itself is open, and anyone can make api requests and retrieve metadata about your packages. (I would accept PR that check the token on each api request (with optional cache))).
+
+NOTE: I haven't found the best way to pass credentials. I really prefer to keep this a stateless application. I am considering adding OAuth2 support, but it is yak-shaving at this point.
 
 ## Gitlab
 
