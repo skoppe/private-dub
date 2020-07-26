@@ -10,15 +10,15 @@ Just point it to your VCS, put a `dub.json`/`dub.sdl` in a repository and tag a 
 
 No need to publish anything. Projects and versions are discovered automatically.
 
-Just point dub to your registry and be happy ever after. `dub build --registry=https://private-dub.example.com`.
+Just point dub to your registry and be happy ever after. `dub build --registry=https://gitlab.example.com`.
 
 ## Settings registry via settings.json
 
-Better yet, put the following in `~/.dub/settings.json` or `/%APPDATA%\dub\settings.json`:
+Better yet, put the following in `~/.dub/settings.json` or `/%APPDATA%\dub\settings.json`, and just `dub` like a boss:
 
 ```json
 {
-	"registryUrls": ["https://private-dub.example.com"],
+	"registryUrls": ["https://gitlab.example.com"]
 }
 ```
 
@@ -36,7 +36,7 @@ dependency "gitlab.example.com.another-project" version="~>1.2.3"
 dependency "vibe-d" version="~>3.4.5"
 ```
 
-> NOTE: Even though the documentation on [code.dlang.org](https://code.dlang.org) states that only alphanumerics and '-' are allowed, since there is no enforcement and because some sanity of namespaces, we decided to take this approach.
+> NOTE: Even though the documentation on [code.dlang.org](https://code.dlang.org) states that only alphanumerics and '-' are allowed, since there is no enforcement, we decided to take this approach.
 
 # Config
 
@@ -53,7 +53,7 @@ At first startup it might take a few moments to crawl you VCS system. Subsequent
 
 If you have repositories on your VCS that have limited access, you need pass credentials.
 
-Currently the access token is passed as part of the registry's uri. E.g. `dub --registry=https://private-dub.example.com/token/<access-token>` or in your `settings.json`.
+Currently the access token is passed as part of the registry's uri. E.g. `dub --registry=https://gitlab.example.com/token/<access-token>` or in your `settings.json`.
 
 The advantage is that it reuses your VCS permissions you already have. The downside is that the application currently only supports one private VCS with credentials, and that your access_token is either stored in plain-text in a file or entered via the command line.
 
