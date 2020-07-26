@@ -38,16 +38,15 @@ dependency "vibe-d" version="~>3.4.5"
 
 > NOTE: Even though the documentation on [code.dlang.org](https://code.dlang.org) states that only alphanumerics and '-' are allowed, since there is no enforcement, we decided to take this approach.
 
-# Config
+# Install
 
 See <a href="config-example.ini">config-example.ini</a> for configuration.
 
-# Install
+~There is a dockerfile somewhere, run it. The whole app keeps a cache (in memory and on disk) for speed but is otherwise stateless. No database, no nothing. Just run it.~
 
-There is a dockerfile somewhere, run it. The whole app keeps a cache (in memory and on disk) for speed but is otherwise stateless. No database, no nothing. Just run it.
+~At first startup it might take a few moments to crawl you VCS system. Subsequent restarts only need to load the cache from disk.~
 
-At first startup it might take a few moments to crawl you VCS system. Subsequent restarts only need to load the cache from disk.
-
+Instructions are coming...
 
 ## Credendials
 
