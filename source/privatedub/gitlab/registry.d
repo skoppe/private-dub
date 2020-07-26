@@ -11,15 +11,18 @@ import dub.recipe.io;
 import dub.recipe.packagerecipe;
 import std.datetime.date : Date;
 import dub.internal.vibecompat.data.json : Json, parseJsonString;
+import std.typecons : Nullable;
 
 struct GitlabDubPackage {
   int projectId;
+  string namespace;
   string name;
   VersionedPackage[] versions;
   Json toJson() {
     Json json = Json.emptyObject();
     json["versions"] = versions.map!(v => v.toJson()).array();
     json["projectId"] = projectId;
+    json["namespace"] = namespace;
     json["name"] = name;
     return json;
   }
@@ -28,6 +31,7 @@ struct GitlabDubPackage {
     auto p = GitlabDubPackage();
     p.projectId = json["projectId"].get!int;
     p.name = json["name"].get!string;
+    p.namespace = json["namespace"].get!string;
     p.versions = json["versions"][].map!(VersionedPackage.fromJson).array();
     return p;
   }
@@ -42,6 +46,7 @@ private:
   GitlabDubPackage[string] packages;
   immutable GitlabConfig config;
   immutable string packagesPath;
+  enum string storageVersion = "1"; // increment when we modify the stuff we save to disk, it will trigger a recrawl
   Mutex mutex;
   Nullable!Date lastCrawl;
   auto lock() shared {
@@ -70,8 +75,15 @@ public:
     return config.hostname ~ ".";
   }
 
+  PackageMeta[] search(string name) {
+    // note we don't actually search, just match a single package and return if found
+    return [getPackageMeta(name)];
+  }
+
   PackageMeta getPackageMeta(string name) {
     import std.algorithm : startsWith;
+    import std.exception : enforce;
+    enforce(hasPackage(name), "Cannot find package "~name);
 
     return PackageMeta(this, name, packages[name].versions);
   }
@@ -99,11 +111,17 @@ public:
     }
   }
 
-  string getDownloadUri(string name, string ver_) {
-    throw new Exception("WIP");
+  string getDownloadUri(string name, string ver_, Nullable!string token) {
+    import std.uri : encodeComponent;
+    import privatedub.util : andThen, orElse;
+
+    auto p = packages[name];
+    auto uri = config.endpoints.archive(p.projectId, "v" ~ ver_);
+    auto extra = token.andThen!(t => "&private_token="~encodeComponent(t)).orElse("");
+    return uri~extra;
   }
 
-  private void addVersionedPackage(int projectId, VersionedPackage p) shared {
+  private void addVersionedPackage(int projectId, string namespace, VersionedPackage p) shared {
     with (lock()) {
       import std.algorithm : canFind, countUntil;
 
@@ -115,7 +133,7 @@ public:
           pack.versions[idx] = p;
         return;
       }
-      packages[p.recipe.name] = GitlabDubPackage(projectId, p.recipe.name, [p]);
+      packages[p.recipe.name] = GitlabDubPackage(projectId, namespace, p.recipe.name, [p]);
     }
   }
 
@@ -156,7 +174,7 @@ public:
     import std.file : write, rename, remove;
     import std.conv : text;
 
-    auto filename = buildPath(packagesPath, p.name.withExtension("json").text());
+    auto filename = buildPath(packagesPath, p.name ~ ".json");
     auto tmpfilename = filename ~ ".tmp";
 
     write(tmpfilename, p.toJson().toString());
@@ -166,8 +184,14 @@ public:
   private void loadRegistry() {
     import std.file : dirEntries, SpanMode, readText, exists;
     import std.path : buildPath, extension;
+    import std.stdio;
 
     try {
+      string ver = readText(versionFile);
+      if (ver != storageVersion) {
+        writeln(config.hostname, ": cache format changed, need to re-sync");
+        return;
+      }
       lastCrawl = Nullable!Date(Date.fromISOExtString(readText(lastCrawlFile)));
     }
     catch (Exception e) {
@@ -192,7 +216,14 @@ public:
 
       lastCrawl = Nullable!Date(yesterday);
       write(lastCrawlFile, lastCrawl.get.toISOExtString);
+      write(versionFile, storageVersion);
     }
+  }
+
+  private string versionFile() {
+    import std.path : buildPath;
+
+    return buildPath(config.storage, config.hostname, "version");
   }
 
   private string lastCrawlFile() {
@@ -214,7 +245,7 @@ public:
       void notify(ref ProjectVersionedPackage task) {
         writeln(registry.config.hostname,
             ": found " ~ task.package_.recipe.name ~ "@" ~ task.package_.ref_);
-        registry.addVersionedPackage(task.projectId, task.package_);
+        registry.addVersionedPackage(task.projectId, task.namespace, task.package_);
       }
 
       void notify(ref MarkProjectCrawled task) {

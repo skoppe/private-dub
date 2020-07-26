@@ -48,6 +48,12 @@ struct Endpoints {
     return buildPath(host,
         "events?action=" ~ action ~ "&scope=all&sort=asc&after=" ~ after.toISOExtString());
   }
+
+  string archive(int projectId, string ref_) {
+    import std.conv : to;
+
+    return buildPath(projects(), projectId.to!string, "repository/archive.zip?sha="~ref_);
+  }
 }
 
 struct Link {
@@ -88,9 +94,15 @@ unittest {
 struct JsonContent {
   import requests : Response;
 
-  private Response response;
+  Response response;
   JSONValue json() {
+    try {
     return parseJSON(cast(string) response.responseBody.data);
+    } catch (Exception e) {
+      import std.stdio;
+      writeln(cast(string)response.responseBody.data);
+      throw e;
+    }
   }
 
   string text() {
@@ -101,7 +113,7 @@ struct JsonContent {
 struct TextContent {
   import requests : Response;
 
-  private Response response;
+  Response response;
   string text() {
     return cast(string) response.responseBody.data;
   }
@@ -110,7 +122,7 @@ struct TextContent {
 struct RawContent {
   import requests : Response;
 
-  private Response response;
+  Response response;
   ubyte[] raw() {
     return response.responseBody.data;
   }
@@ -128,6 +140,7 @@ struct GitlabResponse {
 
   this(Response response, GitlabConfig config) {
     this.response = response;
+    this.config = config;
   }
 
   Content content() {

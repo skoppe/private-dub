@@ -3,6 +3,7 @@ module privatedub.registry;
 import dub.recipe.packagerecipe;
 import dub.recipe.json;
 import dub.internal.vibecompat.data.json;
+import std.typecons : Nullable;
 
 struct VersionedPackage {
   string ref_;
@@ -33,9 +34,10 @@ struct PackageMeta {
 
 interface Registry {
   string getPrefix();
+  PackageMeta[] search(string name);
   PackageMeta getPackageMeta(string name);
   bool hasPackage(string name);
-  string getDownloadUri(string name, string ver_);
+  string getDownloadUri(string name, string ver_, Nullable!string token);
   int priority();
   void sync() shared;
   void sync();

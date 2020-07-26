@@ -115,7 +115,7 @@ struct Scheduler(Queue) {
         serial.queues.each!((ref q) => this.drainQueue(q, runner, args));
       }, (Queue.ParallelWork parallel) {
         parallel.queue.each!((ref q) => this.drainQueue(q, runner, args));
-      }, (ref FetchProjectSubPackage t) {
+      }, (ref FetchTags t) {
         static if (__traits(compiles, runner.notify(t)))
           runner.notify(t);
         static if (hasMember!(typeof(t), "run")) {

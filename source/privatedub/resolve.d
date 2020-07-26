@@ -3,7 +3,7 @@ module privatedub.resolve;
 import privatedub.registry;
 import dub.dependency;
 import dub.recipe.packagerecipe : PackageRecipe, BuildSettingsTemplate, ConfigurationInfo;
-
+import std.typecons : Nullable;
 // import dub.recipe.json;
 import dub.internal.vibecompat.data.json : Json;
 
@@ -64,8 +64,10 @@ Json toPackageDependencyInfo(PackageMeta p) {
 }
 
 Json toPackageDependencyInfo(VersionedPackage p) {
+  import std.string : stripLeft;
   auto json = p.recipe.toPackageDependencyInfo();
   json["commitID"] = p.commitId;
+  json["version"] = p.ref_.stripLeft("v");
   return json;
 }
 
@@ -76,8 +78,8 @@ Json toPackageDependencyInfo(PackageRecipe p) {
   auto json = Json.emptyObject();
   json["name"] = p.name;
   json["subPackages"] = p.subPackages.map!(s => s.recipe.toPackageDependencyInfo).array();
-  if (p.version_.length > 0)
-    json["version"] = p.version_;
+  // if (p.version_.length > 0)
+  //   json["version"] = p.version_;
   json["dependencies"] = p.buildSettings.dependencies.toPackageDependencyInfo();
   json["configurations"] = p.configurations.map!(toPackageDependencyInfo).array();
   return json;
@@ -131,4 +133,65 @@ auto getDependencies(ref BuildSettingsTemplate bst) {
   import std.algorithm : map;
 
   return bst.dependencies.byKey.map!(PackageName.parse);
+}
+
+bool isReleaseVersion(string ver) {
+  import std.algorithm : until, canFind;
+
+  return !ver.until('+').canFind('-');
+}
+
+struct Version {
+  int x, y, z;
+  int opCmp(ref const Version o) {
+    int dx = x - o.x, dy = y - o.y, dz = z - o.z;
+    if (dx != 0)
+      return dx;
+    if (dy != 0)
+      return dy;
+    return dz;
+  }
+}
+
+Nullable!Version parseVersion(string v) {
+  import std.regex : ctRegex, matchFirst;
+  import std.algorithm : map;
+  import std.conv : to;
+  import std.range : dropOne;
+
+  enum reg = ctRegex!(`^v?([0-9]+)\.([0-9]+)\.([0-9]+)`);
+  auto matches = v.matchFirst(reg);
+  if (!matches)
+    return typeof(return).init;
+  return typeof(return)(Version(matches.dropOne.map!(to!int)
+      .toTuple!3
+      .expand));
+}
+
+auto highestReleaseVersion(VersionedPackage[] ps) {
+  import std.algorithm : maxElement, map, filter;
+  import std.typecons : tuple;
+  import privatedub.util : andThen;
+
+  return ps.filter!(p => p.ref_.isReleaseVersion)
+    .map!(p => parseVersion(p.ref_).andThen!(v => tuple!("orderable","ref_")(v,p.ref_)))
+    .filter!(t => !t.isNull)
+    .maxElement!(t => t.orderable)
+    .ref_;
+}
+
+template toTuple(size_t n) {
+  auto toTuple(Range)(Range range) {
+    import std.typecons : tuple;
+    import std.range : iota;
+    import std.algorithm : map, joiner;
+    import std.conv : text;
+    auto next(ref Range range) {
+      auto r = range.front();
+      range.popFront();
+      return r;
+    }
+    enum code = iota(0, n-1).map!(i => "next(range)").joiner(",").text();
+    mixin("return tuple("~code~", range.front);");
+  }
 }

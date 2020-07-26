@@ -9,6 +9,7 @@ import sumtype;
 import std.algorithm : map, filter, joiner, each;
 import std.typecons : Nullable;
 import dub.recipe.packagerecipe;
+import std.json : JSONValue;
 
 struct FindProjects {
   void run(WorkQueue)(ref WorkQueue queue, immutable GitlabConfig config,
@@ -20,34 +21,50 @@ struct FindProjects {
       if (registry.hasProject(id)) {
         continue;
       }
-      queue.enqueue(queue.serial(DetermineDubPackage(id), MarkProjectCrawled(id)));
+      queue.enqueue(queue.serial(DetermineDubPackage(id, project["path_with_namespace"].str), MarkProjectCrawled(id)));
     }
   }
 }
 
 struct DetermineDubPackage {
   int projectId;
+  string namespace;
   void run(WorkQueue)(ref WorkQueue queue, immutable GitlabConfig config) {
     if (config.isDubPackage(projectId))
-      queue.enqueue(FetchTags(projectId));
+      queue.enqueue(FetchTags(projectId, namespace));
   }
 }
 
 struct FetchTags {
   int projectId;
+  string namespace;
   void run(WorkQueue)(ref WorkQueue queue, immutable GitlabConfig config) {
+    import std.json;
+
     auto tags = config.getProjectTags(projectId).paginate()
-      .map!(p => p.content.tryMatch!((JsonContent content) => content.json.array)).joiner();
+      .map!(p => p.content.tryMatch!((JsonContent content) {
+          try {
+            return content.json.array();
+          }
+          catch (Exception e) {
+            JSONValue[] json;
+            return json;
+          }
+        })).joiner();
     foreach (tag; tags)
-      queue.enqueue(FetchVersionedPackageFile(projectId, tag["name"].str, tag["commit"]["id"].str));
+      queue.enqueue(FetchVersionedPackageFile(projectId, namespace,
+          tag["name"].str, tag["commit"]["id"].str));
   }
 }
 
 struct FetchVersionedPackageFile {
   int projectId;
+  string namespace;
   string ref_;
   string commitId;
   void run(WorkQueue)(ref WorkQueue queue, immutable GitlabConfig config) {
+    import privatedub.util : orElse;
+
     auto parseProjectFile(string path) {
       return .parseProjectFile(config, projectId, path, ref_);
     }
@@ -55,7 +72,7 @@ struct FetchVersionedPackageFile {
     auto recipeOpt = parseProjectFile("dub.sdl").orElse(parseProjectFile("dub.json"));
     if (!recipeOpt.isNull) {
       auto recipe = recipeOpt.get();
-      queue.enqueue(ProjectVersionedPackage(projectId, VersionedPackage(ref_, commitId, recipe)));
+      queue.enqueue(ProjectVersionedPackage(projectId, namespace, VersionedPackage(ref_, commitId, recipe)));
       if (recipe.subPackages.length > 0)
         recipe.subPackages.each!(sub => queue.enqueue(FetchProjectSubPackage(recipe.name,
             projectId, ref_, sub.path)));
@@ -70,6 +87,7 @@ struct FetchProjectSubPackage {
   string path;
   void run(WorkQueue)(ref WorkQueue queue, immutable GitlabConfig config) {
     import std.path : buildPath;
+    import privatedub.util : orElse;
 
     auto parseProjectFile(string path) {
       return .parseProjectFile(config, projectId, path, ref_);
@@ -84,6 +102,7 @@ struct FetchProjectSubPackage {
 
 struct ProjectVersionedPackage {
   int projectId;
+  string namespace;
   VersionedPackage package_;
 }
 
@@ -102,6 +121,16 @@ struct MarkProjectCrawled {
 struct CrawlComplete {
 }
 
+JSONValue[] expectJSONArray(JsonContent content) {
+  try {
+    return content.json.array;
+  } catch (Exception e) {
+    import std.stdio;
+    writeln(content.response);
+    throw e;
+  }
+}
+
 struct CrawlEvents {
   import std.datetime.date : Date;
 
@@ -112,7 +141,7 @@ struct CrawlEvents {
     import std.algorithm : sort, chunkBy;
 
     auto events = config.getEvents("pushed", after).paginate()
-      .map!(p => p.content.tryMatch!((JsonContent content) => content.json.array)).joiner();
+      .map!(p => p.content.tryMatch!((JsonContent content) => content.expectJSONArray())).joiner();
 
     auto app = appender!(FetchVersionedPackageFile[]);
     foreach (event; events) {
@@ -158,29 +187,7 @@ Nullable!PackageRecipe parseProjectFile(immutable GitlabConfig config,
   auto json = packageFile.content.tryMatch!((JsonContent content) => content.json);
   enforce(json["encoding"].str == "base64", "can only decode base64 encodings");
   auto content = (cast(string) Base64.decode(json["content"].str)).removeBOM;
-  try {
-    return typeof(return)(parsePackageRecipe(content, filename));
-  }
-  catch (Exception e) {
-    import std.stdio;
-
-    writeln(content);
-    throw e;
-  }
-}
-
-auto orElse(T : Nullable!P, P, L)(T base, lazy L orElse) {
-  if (base.isNull)
-    return orElse;
-  return base;
-}
-
-unittest {
-  import unit_threaded;
-
-  Nullable!int a = 5, b = 4;
-  a.orElse(b).get.shouldEqual(5);
-  Nullable!int.init.orElse(b).get.shouldEqual(4);
+  return typeof(return)(parsePackageRecipe(content, filename));
 }
 
 string removeBOM(string content) {

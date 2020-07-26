@@ -11,20 +11,24 @@ void runApi(Nursery nursery, Registry[] registries) {
   auto regs = registries.dup();
   auto task = nursery.thread().then(() {
     import std.stdio;
+    import std.traits : getUDAs;
 
-    writeln("Starting server");
+    writeln("Server started");
     void handleConnection(Cgi cgi) @trusted {
       PathRequest pathRequest = PathRequest(cgi.pathInfo, cgi.get);
       static foreach (route; Routes) {
-        {
-          alias path = getPathUDA!route;
-          auto match = pathRequest.matches(path);
-          if (!match.isNull) {
-            route(match.get, nursery, regs, cgi);
-            return;
+        static foreach (path; getUDAs!(route, Path)) {
+          {
+            auto match = pathRequest.matches(path);
+            if (!match.isNull) {
+              route(match.get, nursery, regs, cgi);
+              return;
+            }
           }
         }
       }
+      cgi.setResponseStatus("404 Not Found");
+      cgi.close();
     }
 
     runCgi!(handleConnection)(nursery, 8888, "0.0.0.0");
@@ -32,26 +36,50 @@ void runApi(Nursery nursery, Registry[] registries) {
   nursery.run(task);
 }
 
-template getPathUDA(alias T) {
-  import std.traits : getUDAs;
+alias Routes = AliasSeq!(getInfos, getDownloadUri, getPackages);
 
-  enum getPathUDA = getUDAs!(T, Path)[0];
+@(Path("/token/$token/api/packages/search"))
+@(Path("/api/packages/search"))
+void getPackages(MatchedPath path, Nursery nursery, Registry[] registries, Cgi cgi) {
+  import std.algorithm : map;
+  import asdf;
+  import std.string : stripLeft;
+
+  try {
+    string q = path.query["q"];
+    auto reg = registries.findRegistry(PackageName.parse(q));
+    auto results = reg.search(q);
+    auto sr = results.map!(result => SearchResult(result.name, null, result.versions.highestReleaseVersion().stripLeft("v")));
+    cgi.setResponseContentType("application/json");
+    cgi.setResponseStatus("200 Ok");
+    cgi.write(sr.serializeToJson());
+  }
+  catch (Exception e) {
+    import std.stdio;
+    writeln(e);
+    cgi.setResponseStatus("404 Not Found");
+  }
+  cgi.close();
 }
 
-alias Routes = AliasSeq!(getInfos, getDownloadUri);
-
+@(Path("/token/$token/api/packages/infos"))
 @(Path("/api/packages/infos"))
 void getInfos(MatchedPath path, Nursery nursery, Registry[] registries, Cgi cgi) {
   import dub.internal.vibecompat.data.json : Json, parseJsonString;
 
-  Json packages = parseJsonString(path.query["packages"]);
-  Json output = resolve(registries, packages[0].get!string).toPackageDependencyInfo;
-  cgi.setResponseContentType("application/json");
-  cgi.setResponseStatus("200 Ok");
-  cgi.write(output.toString());
+  try {
+    Json packages = parseJsonString(path.query["packages"]);
+    Json output = resolve(registries, packages[0].get!string).toPackageDependencyInfo;
+    cgi.setResponseContentType("application/json");
+    cgi.setResponseStatus("200 Ok");
+    cgi.write(output.toString());
+  } catch (Exception e) {
+    cgi.setResponseStatus("404 Not Found");
+  }
   cgi.close();
 }
 
+@(Path("/token/$token/packages/$name/$version"))
 @(Path("/packages/$name/$version"))
 void getDownloadUri(MatchedPath path, Nursery nursery, Registry[] registries, Cgi cgi) {
   import std.path : stripExtension;
@@ -60,8 +88,16 @@ void getDownloadUri(MatchedPath path, Nursery nursery, Registry[] registries, Cg
   auto ver = path.params["version"];
   auto reg = registries.findRegistry(PackageName.parse(name));
   cgi.setResponseStatus("302 Found");
-  cgi.setResponseLocation(reg.getDownloadUri(name, ver.stripExtension));
+  cgi.setResponseLocation(reg.getDownloadUri(name, ver.stripExtension, path.params.getOpt("token")));
   cgi.close();
+}
+
+struct SearchResult {
+  import asdf : serializationKeys;
+  string name;
+  string description;
+  @serializationKeys("version")
+  string ver;
 }
 
 struct Path {
@@ -82,6 +118,12 @@ struct MatchedPath {
   string path;
   immutable string[string] query;
   string[string] params;
+}
+
+Nullable!string getOpt(string[string] params, string key) {
+  if (auto v = key in params)
+    return typeof(return)(*v);
+  return typeof(return).init;
 }
 
 struct PathRequest {

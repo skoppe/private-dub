@@ -3,6 +3,7 @@ module privatedub.dlang.registry;
 import privatedub.registry;
 import dub.internal.vibecompat.data.json : Json, parseJsonString;
 import dub.recipe.packagerecipe : PackageRecipe, BuildSettingsTemplate;
+import std.typecons : Nullable;
 
 import dub.recipe.json : parseJson;
 
@@ -67,6 +68,11 @@ public:
     return "";
   }
 
+  PackageMeta[] search(string name) {
+    // note we don't actually search, just match a single package and return if found
+    return [getPackageMeta(name)];
+  }
+
   PackageMeta getPackageMeta(string name) {
     import std.algorithm : map;
     import std.array : array;
@@ -75,7 +81,7 @@ public:
     return PackageMeta(this, name, content["versions"][].map!((v) {
         PackageRecipe recipe;
         parseJson(recipe, v, "");
-        return VersionedPackage(v["version"].get!string, v["commitID"].get!string, recipe);
+        return VersionedPackage(v["version"].get!string.normalizeVersion, v["commitID"].get!string, recipe);
       }).array());
   }
 
@@ -87,7 +93,7 @@ public:
     return exists(path);
   }
 
-  string getDownloadUri(string name, string ver_) {
+  string getDownloadUri(string name, string ver_, Nullable!string token) {
     import std.algorithm : find;
     import std.range : front, empty;
     import std.format : format;
@@ -117,6 +123,16 @@ public:
     cache[name] = content;
     return content;
   }
+}
+
+// dub stores both and 'v'-less tag as well as branched prefixed with '~' in the version field,
+// to convert to git tags/refs again we have to add the v or remove the ~
+string normalizeVersion(string ver) {
+  import privatedub.resolve;
+  import std.string : stripLeft;
+  if (ver.parseVersion().isNull)
+    return ver.stripLeft("~");
+  return "v"~ver;
 }
 
 Repo cloneRegistry(string path) {
