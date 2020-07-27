@@ -58,7 +58,7 @@ Currently the access token is passed as part of the registry's uri. E.g. `dub --
 
 > NOTE: The application itself performs no checks on the token, it simply passes it along in the redirect to your VCS archive when dub requests a download uri. (This means that the api itself is open, and anyone can make api requests and retrieve metadata about your packages. (I would accept PR that check the token on each api request (with optional cache))).
 
-> NOTE: I haven't found the best way to pass credentials. I really prefer to keep this a stateless application. I am considering adding OAuth2 support, but it is yak-shaving at this point.
+> NOTE: I haven't found the best way to pass credentials. I really prefer to keep this a stateless application. I am considering adding OAuth2 support, which will add the benefit of token expiry (whereas access tokens are mostly set to never expire).
 
 ## VCS's
 
