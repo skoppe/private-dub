@@ -48,6 +48,8 @@ See <a href="config-example.ini">config-example.ini</a> for configuration.
 
 Instructions are coming...
 
+> NOTE: The application provides no SSL. It is recommended to run it behind a reverse proxy that provides SSL termination (e.g. nginx).
+
 ## Credendials
 
 If you have repositories on your VCS that have limited access, you need pass credentials.
