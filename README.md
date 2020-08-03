@@ -1,6 +1,6 @@
 # Private Dub Registry
 
-<img src="https://github.com/skoppe/spasm/workflows/builds/badge.svg"/>
+<img src="https://github.com/skoppe/spasm/workflows/build/badge.svg"/>
 
 Want to keep all your precious projects for yourself but still use dub?
 
