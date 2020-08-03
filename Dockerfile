@@ -26,7 +26,7 @@ RUN addgroup -g 1000 -S private-dub && adduser -u 1000 -D -S -G private-dub priv
 USER private-dub
 WORKDIR /home/private-dub
 
-COPY --from=base /app/private-dub /home/private-dub/
+COPY --chown=private-dub:private-dub --from=base /app/private-dub /home/private-dub/
 COPY --chown=0:0 --from=base /dist /
 
 ENTRYPOINT ["./private-dub"]
