@@ -14,8 +14,6 @@ No need to publish anything. Projects and versions are discovered automatically.
 
 Tell dub about your registry and be happy ever after. `dub build --registry=https://gitlab.example.com`.
 
-## Settings registry via settings.json
-
 Better yet, put the following in `~/.dub/settings.json` or `/%APPDATA%\dub\settings.json`, and just `dub` like a boss:
 
 ```json
