@@ -38,15 +38,15 @@ dependency "vibe-d" version="~>3.4.5"
 
 > NOTE: Even though the documentation on [code.dlang.org](https://code.dlang.org) states that only alphanumerics and '-' are allowed, since there is no enforcement, we decided to take this approach.
 
-# Install
+# Running your own
 
 See <a href="config-example.ini">config-example.ini</a> for configuration.
 
-~There is a dockerfile somewhere, run it. The whole app keeps a cache (in memory and on disk) for speed but is otherwise stateless. No database, no nothing. Just run it.~
+`docker run --rm -p 8888:8888 -v $(pwd)/config.ini:/home/private-dub/config.ini -v $(pwd)/storage:/home/private-dub/storage skoppe/private-dub:latest`
 
-~At first startup it might take a few moments to crawl you VCS system. Subsequent restarts only need to load the cache from disk.~
+The storage mount is optional, but recommended. Otherwise it needs to a crawl your VCS on each start of the container.
 
-Instructions are coming...
+At first startup it might take a few moments to crawl you VCS system. Subsequent restarts only need to load the cache from disk.
 
 > NOTE: The application provides no SSL. It is recommended to run it behind a reverse proxy that provides SSL termination (e.g. nginx).
 
