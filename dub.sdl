@@ -11,3 +11,19 @@ dependency "asdf" version="~>0.5.7"
 dependency "dini" version="~>2.0.0"
 dependency "unit-threaded" version="~>1.0.4"
 dependency "optional" version="~>1.0.0"
+targetType "executable"
+
+configuration "executable" {
+}
+
+configuration "musl" {
+    dflags "-static" platform="ldc"
+}
+
+configuration "unittest" {
+    dependency "unit-threaded" version="*"
+    mainSourceFile "bin/ut.d"
+    excludedSourceFiles "source/app.d"
+    targetType "executable"
+    preBuildCommands "$DUB run --compiler=$$DC unit-threaded -c gen_ut_main -- -f bin/ut.d -d $DUB"
+}
