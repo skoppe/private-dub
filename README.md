@@ -1,5 +1,7 @@
 # Private Dub Registry
 
+<img src="https://github.com/skoppe/spasm/workflows/builds/badge.svg"/>
+
 Want to keep all your precious projects for yourself but still use dub?
 
 Tired of workarounds with submodules or git trees?
