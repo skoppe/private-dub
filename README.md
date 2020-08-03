@@ -48,8 +48,6 @@ See <a href="config-example.ini">config-example.ini</a> for configuration.
 
 The storage mount is optional, but recommended. Otherwise it needs to a crawl your VCS on each start of the container.
 
-At first startup it might take a few moments to crawl you VCS system. Subsequent restarts only need to load the cache from disk.
-
 > NOTE: The application provides no SSL. It is recommended to run it behind a reverse proxy that provides SSL termination (e.g. nginx).
 
 ## Credendials
