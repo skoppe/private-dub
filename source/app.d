@@ -1,17 +1,24 @@
 import privatedub.api;
 import privatedub.registry;
 import privatedub.nursery;
+import privatedub.observable;
 
 void main() {
 	import std.algorithm : each;
 
 	auto registries = getRegistries();
-	registries.each!(r => r.sync());
+	// registries.each!(r => r.sync());
 
 	Nursery nursery = new Nursery();
 	runApi(nursery, registries);
 
-	nursery.sync_wait();
+	nursery.run(nursery.thread().then(() {
+      registries.each!(r => r.sync());
+      SimpleTimer(nursery).seconds(60).subscribe((stoptoken) {
+				registries.each!(r => r.sync());
+			});
+    }));
+  nursery.sync_wait();
 }
 
 Registry[] getRegistries() {

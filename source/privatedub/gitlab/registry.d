@@ -243,8 +243,6 @@ public:
     struct CrawlerResultNotifier {
       shared GitlabRegistry registry;
       void notify(ref ProjectVersionedPackage task) {
-        writeln(registry.config.hostname,
-            ": found " ~ task.package_.recipe.name ~ "@" ~ task.package_.ref_);
         registry.addVersionedPackage(task.projectId, task.namespace, task.package_);
       }
 
@@ -257,8 +255,6 @@ public:
       }
 
       void notify(ref ProjectVersionedSubPackage task) {
-        writeln(registry.config.hostname,
-            ": found " ~ task.parent ~ ":" ~ task.subPackage.name ~ "@" ~ task.ref_);
         registry.addVersionedSubPackage(task.parent, task.ref_, task.path, task.subPackage);
       }
     }
@@ -268,6 +264,7 @@ public:
       writeln(config.hostname, ": syncing metadata, this may take a few minutes.");
       crawler.queue.enqueue(crawler.queue.serial(FindProjects(), CrawlComplete()));
       crawler.drain(CrawlerResultNotifier(this), config, this);
+      writeln(config.hostname, ": syncing done.");
     }
     assert(!(cast() lastCrawl).isNull);
     crawler.queue.enqueue(crawler.queue.serial(CrawlEvents((cast() lastCrawl)
