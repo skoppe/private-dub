@@ -16,10 +16,6 @@ targetType "executable"
 configuration "executable" {
 }
 
-configuration "musl" {
-    dflags "-static" platform="ldc"
-}
-
 configuration "unittest" {
     dependency "unit-threaded" version="*"
     mainSourceFile "bin/ut.d"
