@@ -12,6 +12,7 @@ dependency "dini" version="~>2.0.0"
 dependency "unit-threaded" version="~>1.0.4"
 dependency "optional" version="~>1.0.0"
 targetType "executable"
+dflags "-static" platform="linux-ldc"
 
 configuration "executable" {
 }
