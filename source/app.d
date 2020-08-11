@@ -41,8 +41,10 @@ auto loadConfig(Config)() {
 	import dini;
 	import std.string : split;
 	import std.array : appender;
+	import std.file : thisExePath;
+	import std.path : buildPath, dirName;
 
-	auto ini = Ini.Parse("config.ini");
+	auto ini = Ini.Parse(buildPath(dirName(thisExePath()), "config.ini"));
 	auto app = appender!(Config[]);
 
 	foreach (section; ini.sections) {
