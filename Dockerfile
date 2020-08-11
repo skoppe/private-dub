@@ -10,7 +10,7 @@ RUN cat /app/dub.selections.json | jq -r ' .versions | to_entries | .[] | "\(.ke
 
 ADD source /app/source
 
-RUN cd /app && dub build --build=release
+RUN cd /app && dub build --build=release -c=musl
 
 WORKDIR dist
 RUN { ldd /app/private-dub; } | tr -s '[:blank:]' '\n' | grep '^/' | \

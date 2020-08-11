@@ -32,7 +32,7 @@ jobs:
 
       - name: Build
         run: |
-          dub build
+          dub build --build=release
           zip --junk-paths private-dub.zip private-dub
 
       - name: Create Release
