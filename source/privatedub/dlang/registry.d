@@ -93,7 +93,7 @@ public:
     return exists(path);
   }
 
-  string getDownloadUri(string name, string ver_, Nullable!string token) {
+  string getDownloadUri(string name, string rawVer, Nullable!string token) {
     import std.algorithm : find;
     import std.range : front, empty;
     import std.format : format;
@@ -103,11 +103,12 @@ public:
     auto kind = repo["kind"].get!string;
     auto owner = repo["owner"].get!string;
     auto project = repo["project"].get!string;
+    string ver = rawVer.normalizeVersion();
     if (kind == "github")
-      return "https://github.com/%s/%s/archive/v%s.zip".format(owner, project, ver_);
+      return "https://github.com/%s/%s/archive/%s.zip".format(owner, project, ver);
     else if (kind == "gitlab")
-      return "https://gitlab.com/%s/%s/-/archive/v%s/%s-v%s.zip".format(owner,
-          project, ver_, project, ver_);
+      return "https://gitlab.com/%s/%s/-/archive/%s/%s-%s.zip".format(owner,
+          project, ver, project, ver);
     throw new Exception(kind ~ " is not supported");
   }
 
@@ -125,14 +126,15 @@ public:
   }
 }
 
-// dub stores both and 'v'-less tag as well as branched prefixed with '~' in the version field,
-// to convert to git tags/refs again we have to add the v or remove the ~
+// Dub stores a dub package's 'version' internally WITHOUT a leading 'v' in the case of a
+// semver version and WITH a leading '~' in the case of a branched.
+// We just use the EXACT same ref as found in the git repo.
 string normalizeVersion(string ver) {
   import privatedub.resolve;
   import std.string : stripLeft;
   if (ver.parseVersion().isNull)
     return ver.stripLeft("~");
-  return "v"~ver;
+  return "v"~ver.stripLeft("v");
 }
 
 Repo cloneRegistry(string path) {

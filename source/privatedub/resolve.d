@@ -67,7 +67,10 @@ Json toPackageDependencyInfo(VersionedPackage p) {
   import std.string : stripLeft;
   auto json = p.recipe.toPackageDependencyInfo();
   json["commitID"] = p.commitId;
-  json["version"] = p.ref_.stripLeft("v");
+  if (p.ref_.length > 0 && p.ref_[0] == 'v')
+    json["version"] = p.ref_[1 .. $];
+  else
+    json["version"] = "~"~p.ref_;
   return json;
 }
 
