@@ -65,12 +65,15 @@ Json toPackageDependencyInfo(PackageMeta p) {
 
 Json toPackageDependencyInfo(VersionedPackage p) {
   import std.string : stripLeft;
+
   auto json = p.recipe.toPackageDependencyInfo();
   json["commitID"] = p.commitId;
-  if (p.ref_.length > 0 && p.ref_[0] == 'v')
-    json["version"] = p.ref_[1 .. $];
+
+  if (p.ref_.parseVersion().isNull)
+    json["version"] = "~" ~ p.ref_;
   else
-    json["version"] = "~"~p.ref_;
+    json["version"] = p.ref_[1 .. $];
+
   return json;
 }
 
