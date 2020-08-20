@@ -11,6 +11,7 @@ PackageMeta[string] resolve(Registry[] registries, string name) {
   import std.array : Appender, array;
   import std.algorithm : joiner, sort, uniq, each, filter, find, map;
   import std.range : chain;
+  import privatedub.util : andThen;
 
   PackageMeta[string] packages;
 
@@ -23,25 +24,26 @@ PackageMeta[string] resolve(Registry[] registries, string name) {
     if (current.base in packages)
       continue;
 
-    auto reg = registries.findRegistry(current);
-    auto meta = reg.getPackageMeta(current.base);
-    packages[current.base] = meta;
+    registries.findRegistry(current).andThen!((reg){
+      auto meta = reg.getPackageMeta(current.base);
+      packages[current.base] = meta;
 
-    meta.versions.each!((v) {
-      auto deps = chain(v.recipe.buildSettings.getDependencies(),
+      meta.versions.each!((v) {
+        auto deps = chain(v.recipe.buildSettings.getDependencies(),
         v.recipe.buildTypes.byValue.map!(t => getDependencies(t)).joiner,
-        v.recipe.configurations.map!(c => c.buildSettings.getDependencies).joiner// v.recipe.subPackages.map!(s => chain(
+        v.recipe.configurations.map!(c => c.buildSettings.getDependencies).joiner // v.recipe.subPackages.map!(s => chain(
         //                                      s.recipe.buildSettings.getDependencies(),
         //                                      s.recipe.buildTypes.byValue.map!(getDependencies).joiner,
         //                                      s.recipe.configurations.map!(c => c.buildSettings.getDependencies).joiner)).joiner
         ).array().sort!((a, b) => a.base < b.base)
         .uniq!((a, b) => a.base == b.base);
-      deps.each!((p) {
-        if (p.base !in packages) {
-          queue.put(p);
-        }
+        deps.each!((p) {
+          if (p.base !in packages) {
+            queue.put(p);
+          }
+        });
       });
-    });
+      });
   }
   return packages;
 }
@@ -119,20 +121,20 @@ struct PackageName {
   }
 }
 
-Registry findRegistry(Registry[] registries, PackageName p) {
+Nullable!Registry findRegistry(Registry[] registries, PackageName p) {
   import std.algorithm : filter, startsWith, find;
   import std.range : empty, front;
 
   auto byPrefix = registries.filter!(r => r.getPrefix().length > 0)
     .find!(reg => p.base.startsWith(reg.getPrefix()));
   if (!byPrefix.empty)
-    return byPrefix.front;
+    return typeof(return)(byPrefix.front);
 
   auto byName = registries.find!(reg => reg.hasPackage(p.base));
   if (!byName.empty)
-    return byName.front;
+    return typeof(return)(byName.front);
 
-  throw new Exception("Cannot find package " ~ p.base);
+  return typeof(return).init;
 }
 
 auto getDependencies(ref BuildSettingsTemplate bst) {
