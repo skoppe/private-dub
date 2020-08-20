@@ -48,13 +48,16 @@ void getPackages(MatchedPath path, Nursery nursery, Registry[] registries, Cgi c
   try {
     string q = path.query["q"];
     auto reg = registries.findRegistry(PackageName.parse(q));
-    auto results = reg.search(q);
-    auto sr = results.map!(result => SearchResult(result.name, null, result.versions.highestReleaseVersion().stripLeft("v")));
     cgi.setResponseContentType("application/json");
     cgi.setResponseStatus("200 Ok");
-    cgi.write(sr.serializeToJson());
-  }
-  catch (Exception e) {
+    if (reg.isNull) {
+      cgi.write(`[]`);
+    } else {
+      auto results = reg.search(q);
+      auto sr = results.map!(result => SearchResult(result.name, null, result.versions.highestReleaseVersion().stripLeft("v")));
+      cgi.write(sr.serializeToJson());
+    }
+  } catch (Exception e) {
     import std.stdio;
     writeln(e);
     cgi.setResponseStatus("404 Not Found");
@@ -66,14 +69,21 @@ void getPackages(MatchedPath path, Nursery nursery, Registry[] registries, Cgi c
 @(Path("/api/packages/infos"))
 void getInfos(MatchedPath path, Nursery nursery, Registry[] registries, Cgi cgi) {
   import dub.internal.vibecompat.data.json : Json, parseJsonString;
+  import std.format : format;
 
   try {
     Json packages = parseJsonString(path.query["packages"]);
-    Json output = resolve(registries, packages[0].get!string).toPackageDependencyInfo;
+    auto aa = resolve(registries, packages[0].get!string);
     cgi.setResponseContentType("application/json");
     cgi.setResponseStatus("200 Ok");
-    cgi.write(output.toString());
+    if (aa.length == 0) {
+      cgi.write(`{"%s":null}`.format(packages[0].get!string));
+    } else {
+      cgi.write(aa.toPackageDependencyInfo.toString());
+    }
   } catch (Exception e) {
+    import std.stdio;
+    writeln(e);
     cgi.setResponseStatus("404 Not Found");
   }
   cgi.close();
