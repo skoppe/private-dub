@@ -4,10 +4,16 @@ import std.typecons : Nullable;
 
 template andThen(alias fun) {
   auto andThen(T)(Nullable!T t) {
-    alias RT = Nullable!(typeof(fun(T.init)));
-    if (t.isNull)
-      return RT.init;
-    return RT(fun(t.get));
+    alias RT = typeof(fun(T.init));
+    static if (is(RT == void)) {
+      if (!t.isNull)
+        fun(t.get);
+    } else {
+      alias Result = Nullable!(RT);
+      if (t.isNull)
+        return Result.init;
+      return Result(fun(t.get));
+    }
   }
 }
 
