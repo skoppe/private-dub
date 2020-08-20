@@ -83,11 +83,17 @@ Json toPackageDependencyInfo(PackageRecipe p) {
   import std.algorithm : map;
   import std.array : array;
 
+  auto json = p.toSubPackageDependencyInfo;
+  json["subPackages"] = p.subPackages.map!(s => s.recipe.toSubPackageDependencyInfo).array();
+  return json;
+}
+
+Json toSubPackageDependencyInfo(PackageRecipe p) {
+  import std.algorithm : map;
+  import std.array : array;
+
   auto json = Json.emptyObject();
   json["name"] = p.name;
-  json["subPackages"] = p.subPackages.map!(s => s.recipe.toPackageDependencyInfo).array();
-  // if (p.version_.length > 0)
-  //   json["version"] = p.version_;
   json["dependencies"] = p.buildSettings.dependencies.toPackageDependencyInfo();
   json["configurations"] = p.configurations.map!(toPackageDependencyInfo).array();
   return json;
