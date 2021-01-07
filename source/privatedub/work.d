@@ -99,47 +99,57 @@ struct WorkQueue(Ts...) {
 }
 
 struct Scheduler(Queue) {
+  import kaleidic.experimental.concurrency.stoptoken : StopToken;
   Queue queue;
-  void drain(Runner, Args...)(auto ref Runner runner, auto ref Args args) {
-    drainQueue(queue, runner, args);
+  bool drain(Runner, Args...)(StopToken stopToken, auto ref Runner runner, auto ref Args args) {
+    return drainQueue(stopToken, queue, runner, args);
   }
 
-  void drainQueue(Runner, Args...)(ref Queue queue, auto ref Runner runner, auto ref Args args) {
+  bool drainQueue(Runner, Args...)(StopToken stopToken, ref Queue queue, auto ref Runner runner, auto ref Args args) {
     import std.traits : hasMember;
     import std.algorithm : each;
     import privatedub.gitlab.crawler;
 
     auto task = queue.dequeue();
-    while (!task.isNull) {
+    while (!task.isNull && !stopToken.isStopRequested) {
       task.get.match!((Queue.SerialWork serial) {
-        serial.queues.each!((ref q) => this.drainQueue(q, runner, args));
-      }, (Queue.ParallelWork parallel) {
-        parallel.queue.each!((ref q) => this.drainQueue(q, runner, args));
-      }, (ref FetchTags t) {
-        static if (__traits(compiles, runner.notify(t)))
-          runner.notify(t);
+          serial.queues.each!((ref q) => this.drainQueue(stopToken, q, runner, args));
+        }, (Queue.ParallelWork parallel) {
+          parallel.queue.each!((ref q) => this.drainQueue(stopToken, q, runner, args));
+        }, (ref t) {
+          import std.stdio;
+          writeln(t);
         static if (hasMember!(typeof(t), "run")) {
           import std.traits : Parameters;
           import std.meta : AliasSeq;
 
           alias Params = Parameters!(t.run!Queue)[1 .. $];
           auto selectedArgs = filterByType!(AliasSeq!(Params))(args);
-          t.run(queue, selectedArgs.expand);
+          size_t sleep = 500; // 500ms before first retry, then exponential backoff
+          size_t maxSleep = 60000; // 60000ms max sleep
+          while(true) {
+            try {
+              t.run(queue, selectedArgs.expand);
+              break;
+            } catch (Exception e) {
+              import core.time;
+              import core.thread;
+              import std.stdio : stderr, writeln;
+              import std.algorithm : min;
+              if (stopToken.isStopRequested)
+                break;
+              stderr.writeln("Error: ", e.message, "\nRetrying operation...");
+              Thread.sleep(dur!"msecs"(sleep));
+              sleep = min(maxSleep, sleep * 2);
+            }
+          }
         }
-      }, (ref t) {
         static if (__traits(compiles, runner.notify(t)))
           runner.notify(t);
-        static if (hasMember!(typeof(t), "run")) {
-          import std.traits : Parameters;
-          import std.meta : AliasSeq;
-
-          alias Params = Parameters!(t.run!Queue)[1 .. $];
-          auto selectedArgs = filterByType!(AliasSeq!(Params))(args);
-          t.run(queue, selectedArgs.expand);
-        }
       });
-      task = queue.dequeue();
+    task = queue.dequeue();
     }
+    return !stopToken.isStopRequested;
   }
 }
 

@@ -1,24 +1,34 @@
-import privatedub.api;
 import privatedub.registry;
-import privatedub.nursery;
-import privatedub.observable;
+import kaleidic.experimental.concurrency.stoptoken;
 
 void main() {
+	import privatedub.api;
+	import kaleidic.experimental.concurrency.nursery;
+	import kaleidic.experimental.concurrency;
 	import std.algorithm : each;
 
 	auto registries = getRegistries();
-	// registries.each!(r => r.sync());
+	shared nursery = new shared Nursery();
 
-	Nursery nursery = new Nursery();
-	runApi(nursery, registries);
+	nursery.run(api(registries));
+	nursery.run(periodicSync(nursery.getStopToken, registries));
 
-	nursery.run(nursery.thread().then(() {
-      registries.each!(r => r.sync());
-      SimpleTimer(nursery).seconds(60).subscribe((stoptoken) {
-				registries.each!(r => r.sync());
-			});
-    }));
-  nursery.sync_wait();
+	nursery.sync_wait();
+}
+
+auto periodicSync(StopToken stopToken, Registry[] registries) {
+	import kaleidic.experimental.concurrency.utils;
+	import kaleidic.experimental.concurrency.thread;
+	import kaleidic.experimental.concurrency.operations;
+
+	return ThreadSender().then(closure((StopToken stopToken, Registry[] registries) shared @safe {
+				import kaleidic.experimental.concurrency.timer;
+				import core.time : dur;
+				import std.algorithm : each;
+				do {
+					registries.each!(r => r.sync(stopToken));
+				} while (stopToken.wait(dur!"seconds"(5)));
+			}, stopToken, registries));
 }
 
 Registry[] getRegistries() {

@@ -3,6 +3,7 @@ module privatedub.gitlab.registry;
 import privatedub.gitlab.api;
 import privatedub.gitlab.config;
 import privatedub.work;
+import kaleidic.experimental.concurrency.stoptoken;
 import privatedub.registry;
 import sumtype;
 import std.algorithm : map, filter, joiner;
@@ -232,11 +233,11 @@ public:
     return buildPath(config.storage, config.hostname, "last-crawl");
   }
 
-  void sync() {
-    (cast(shared) this).sync();
+  void sync(StopToken stopToken) @trusted {
+    (cast(shared) this).sync(stopToken);
   }
 
-  void sync() shared {
+  void sync(StopToken stopToken) shared @trusted {
     import std.stdio;
     import privatedub.gitlab.crawler;
 
@@ -263,14 +264,22 @@ public:
     if ((cast() lastCrawl).isNull) {
       writeln(config.hostname, ": syncing metadata, this may take a few minutes.");
       crawler.queue.enqueue(crawler.queue.serial(FindProjects(), CrawlComplete()));
-      crawler.drain(CrawlerResultNotifier(this), config, this);
+      if (!crawler.drain(stopToken, CrawlerResultNotifier(this), config, this)) {
+        writeln(config.hostname, ": syncing cancelled.");
+        return;
+      }
       writeln(config.hostname, ": syncing done.");
     }
     assert(!(cast() lastCrawl).isNull);
     crawler.queue.enqueue(crawler.queue.serial(CrawlEvents((cast() lastCrawl)
         .get), CrawlComplete()));
-    crawler.drain(CrawlerResultNotifier(this), config, this);
+    if (!crawler.drain(stopToken, CrawlerResultNotifier(this), config, this))
+      writeln(config.hostname, ": syncing cancelled.");
   }
+}
+
+void sync(shared GitlabRegistry registry) {
+
 }
 
 Date yesterday() {

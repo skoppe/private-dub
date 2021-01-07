@@ -1,6 +1,7 @@
 module privatedub.dlang.registry;
 
 import privatedub.registry;
+import kaleidic.experimental.concurrency.stoptoken;
 import dub.internal.vibecompat.data.json : Json, parseJsonString;
 import dub.recipe.packagerecipe : PackageRecipe, BuildSettingsTemplate;
 import std.typecons : Nullable;
@@ -49,11 +50,11 @@ public:
     repo = cloneRegistry(storage);
   }
 
-  void sync() {
-    (cast(shared) this).sync();
+  void sync(StopToken stopToken) @trusted {
+    (cast(shared) this).sync(stopToken);
   }
 
-  void sync() shared {
+  void sync(StopToken stopToken) shared @trusted {
     with (lock()) {
       if (repo.pull())
         cache.clear();

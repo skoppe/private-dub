@@ -1,5 +1,6 @@
 module privatedub.registry;
 
+import kaleidic.experimental.concurrency.stoptoken;
 import dub.recipe.packagerecipe;
 import dub.recipe.json;
 import dub.internal.vibecompat.data.json;
@@ -39,8 +40,8 @@ interface Registry {
   bool hasPackage(string name);
   string getDownloadUri(string name, string ver_, Nullable!string token);
   int priority();
-  void sync() shared;
-  void sync();
+  void sync(StopToken stopToken) shared @trusted;
+  void sync(StopToken stopToken) @trusted;
 }
 
 @("Ensure we can use slash in name and dependency")

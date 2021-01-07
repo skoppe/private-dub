@@ -1,4 +1,4 @@
-module privatedub.stoptoken;
+module kaleidic.experimental.concurrency.stoptoken;
 
 // originally this code is from https://github.com/josuttis/jthread by Nicolai Josuttis
 // it is licensed under the Creative Commons Attribution 4.0 Internation License http://creativecommons.org/licenses/by/4.0
@@ -9,8 +9,16 @@ class StopSource {
     return state.request_stop();
   }
 
+  bool stop() nothrow @trusted shared {
+    return (cast(StopSource)this).state.request_stop();
+  }
+
   bool isStopRequested() nothrow @safe @nogc {
     return state.is_stop_requested();
+  }
+
+  bool isStopRequested() nothrow @trusted @nogc shared {
+    return (cast(StopSource)this).isStopRequested();
   }
 }
 
@@ -20,28 +28,47 @@ struct StopToken {
     this.source = source;
   }
 
-  StopCallback onStop(void delegate() nothrow @safe shared callback) nothrow @safe {
-    auto cb = new StopCallback(callback);
-    if (source.state.try_add_callback(cb, true))
-      cb.source = source;
-    return cb;
-  }
-
   bool isStopRequested() nothrow @safe @nogc {
     return source.isStopRequested();
   }
+
+  enum isStopPossible = true;
+}
+
+struct NeverStopToken {
+  enum isStopRequested = false;
+  enum isStopPossible = false;
+}
+
+enum isStopToken(T) = true; // TODO:
+
+StopCallback onStop(StopToken)(auto ref StopToken stopToken, void delegate() nothrow @safe shared callback) nothrow @safe if (isStopToken!StopToken) {
+  import std.traits : hasMember;
+  auto cb = new StopCallback(callback);
+  static if (stopToken.isStopPossible && hasMember!(StopToken, "source")) {
+    if (stopToken.source.state.try_add_callback(cb, true))
+      cb.source = stopToken.source;
+  }
+  return cb;
 }
 
 class StopCallback {
-  void dispose() nothrow @safe @nogc {
+  void dispose() nothrow @trusted @nogc {
     import core.atomic : cas;
 
     if (source is null)
       return;
     auto local = source;
-    if (!cas(&source, local, null)) {
-      assert(source is null);
-      return;
+    static if (__traits(compiles, cas(&source, local, null))) {
+      if (!cas(&source, local, null)) {
+        assert(source is null);
+        return;
+      }
+    } else {
+      if (!cas(cast(shared)&source, cast(shared)local, null)) {
+        assert(source is null);
+        return;
+      }
     }
     local.state.remove_callback(this);
   }

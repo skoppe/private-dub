@@ -3,44 +3,51 @@ module privatedub.api;
 import privatedub.server;
 import privatedub.registry;
 import privatedub.resolve;
-import privatedub.nursery;
 import std.meta : AliasSeq;
 import std.typecons : Nullable;
 
-void runApi(Nursery nursery, Registry[] registries) {
-  auto regs = registries.dup();
-  auto task = nursery.thread().then(() {
-    import std.stdio;
-    import std.traits : getUDAs;
+auto api(Registry[] registries) {
+  import kaleidic.experimental.concurrency.nursery;
+  import kaleidic.experimental.concurrency.thread;
+  import kaleidic.experimental.concurrency.operations;
+  import kaleidic.experimental.concurrency.utils;
 
-    writeln("Server started");
-    void handleConnection(Cgi cgi) @trusted {
-      PathRequest pathRequest = PathRequest(cgi.pathInfo, cgi.get);
-      static foreach (route; Routes) {
-        static foreach (path; getUDAs!(route, Path)) {
-          {
-            auto match = pathRequest.matches(path);
-            if (!match.isNull) {
-              route(match.get, nursery, regs, cgi);
-              return;
+  auto regs = registries.dup();
+  auto nursery = new shared Nursery();
+
+  nursery.run(ThreadSender().then(closure((Registry[] regs) shared {
+        import std.stdio;
+        import std.traits : getUDAs;
+
+        writeln("Server started");
+        void handleConnection(Cgi cgi) @trusted {
+          PathRequest pathRequest = PathRequest(cgi.pathInfo, cgi.get);
+          static foreach (route; Routes) {
+            static foreach (path; getUDAs!(route, Path)) {
+              {
+                auto match = pathRequest.matches(path);
+                if (!match.isNull) {
+                  route(match.get, regs, cgi);
+                  return;
+                }
+              }
             }
           }
+          cgi.setResponseStatus("404 Not Found");
+          cgi.close();
         }
-      }
-      cgi.setResponseStatus("404 Not Found");
-      cgi.close();
-    }
 
-    runCgi!(handleConnection)(nursery, 8888, "0.0.0.0");
-  });
-  nursery.run(task);
+
+        runCgi!(handleConnection)(nursery, 8889, "0.0.0.0");
+        }, regs)));
+  return nursery;
 }
 
 alias Routes = AliasSeq!(getInfos, getDownloadUri, getPackages);
 
 @(Path("/token/$token/api/packages/search"))
 @(Path("/api/packages/search"))
-void getPackages(MatchedPath path, Nursery nursery, Registry[] registries, Cgi cgi) {
+void getPackages(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.algorithm : map;
   import asdf;
   import std.string : stripLeft;
@@ -67,7 +74,7 @@ void getPackages(MatchedPath path, Nursery nursery, Registry[] registries, Cgi c
 
 @(Path("/token/$token/api/packages/infos"))
 @(Path("/api/packages/infos"))
-void getInfos(MatchedPath path, Nursery nursery, Registry[] registries, Cgi cgi) {
+void getInfos(MatchedPath path, Registry[] registries, Cgi cgi) {
   import dub.internal.vibecompat.data.json : Json, parseJsonString;
   import std.format : format;
 
@@ -91,7 +98,7 @@ void getInfos(MatchedPath path, Nursery nursery, Registry[] registries, Cgi cgi)
 
 @(Path("/token/$token/packages/$name/$version"))
 @(Path("/packages/$name/$version"))
-void getDownloadUri(MatchedPath path, Nursery nursery, Registry[] registries, Cgi cgi) {
+void getDownloadUri(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.path : stripExtension;
 
   auto name = path.params["name"];

@@ -74,7 +74,7 @@ struct FetchVersionedPackageFile {
       auto recipe = recipeOpt.get();
       queue.enqueue(ProjectVersionedPackage(projectId, namespace, VersionedPackage(ref_, commitId, recipe)));
       if (recipe.subPackages.length > 0)
-        recipe.subPackages.each!(sub => queue.enqueue(FetchProjectSubPackage(recipe.name,
+        recipe.subPackages.filter!(sub => sub.path.length > 0).each!(sub => queue.enqueue(FetchProjectSubPackage(recipe.name,
             projectId, ref_, sub.path)));
     }
   }
@@ -140,11 +140,14 @@ struct CrawlEvents {
     import std.array : appender, array;
     import std.algorithm : sort, chunkBy;
 
+    // TODO: this misses mirrored projects
     auto events = config.getEvents("pushed", after).paginate()
       .map!(p => p.content.tryMatch!((JsonContent content) => content.expectJSONArray())).joiner();
 
     auto app = appender!(FetchVersionedPackageFile[]);
     foreach (event; events) {
+      import std.stdio;
+      writeln(event);
       if (event["action_name"].str != "pushed new")
         continue;
       if ("push_data" !in event)

@@ -5,6 +5,7 @@ copyright "Copyright © 2020, skoppe"
 license "MIT"
 dependency "requests" version="~>1.1.5"
 dependency "dub" version="~>1.22.0"
+dependency "concepts" version="~>0.0.8"
 dependency "sumtype" version="~>0.9.4"
 dependency "arsd-official:cgi" version="~>8.2.0"
 dependency "asdf" version="~>0.5.7"
@@ -12,19 +13,17 @@ dependency "dini" version="~>2.0.0"
 dependency "unit-threaded" version="~>1.0.4"
 dependency "optional" version="~>1.0.0"
 targetType "executable"
-
 configuration "executable" {
+	targetType "executable"
 }
-
 configuration "musl" {
-    dflags "-static" platform="linux-ldc"
+	targetType "executable"
+	dflags "-static" platform="linux-ldc"
 }
-
-
 configuration "unittest" {
-    dependency "unit-threaded" version="*"
-    mainSourceFile "bin/ut.d"
-    excludedSourceFiles "source/app.d"
-    targetType "executable"
-    preBuildCommands "$DUB run --compiler=$$DC unit-threaded -c gen_ut_main -- -f bin/ut.d -d $DUB"
+	dependency "unit-threaded" version=">=0.0.0"
+	targetType "executable"
+	mainSourceFile "bin/ut.d"
+	excludedSourceFiles "source/app.d"
+	preBuildCommands "$DUB run --compiler=$$DC unit-threaded -c gen_ut_main -- -f bin/ut.d -d $DUB"
 }
