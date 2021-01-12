@@ -146,8 +146,6 @@ struct CrawlEvents {
 
     auto app = appender!(FetchVersionedPackageFile[]);
     foreach (event; events) {
-      import std.stdio;
-      writeln(event);
       if (event["action_name"].str != "pushed new")
         continue;
       if ("push_data" !in event)

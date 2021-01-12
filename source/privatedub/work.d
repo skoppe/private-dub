@@ -117,8 +117,6 @@ struct Scheduler(Queue) {
         }, (Queue.ParallelWork parallel) {
           parallel.queue.each!((ref q) => this.drainQueue(stopToken, q, runner, args));
         }, (ref t) {
-          import std.stdio;
-          writeln(t);
         static if (hasMember!(typeof(t), "run")) {
           import std.traits : Parameters;
           import std.meta : AliasSeq;

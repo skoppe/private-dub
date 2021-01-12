@@ -244,6 +244,7 @@ public:
     struct CrawlerResultNotifier {
       shared GitlabRegistry registry;
       void notify(ref ProjectVersionedPackage task) {
+        writeln(task);
         registry.addVersionedPackage(task.projectId, task.namespace, task.package_);
       }
 
@@ -252,10 +253,12 @@ public:
       }
 
       void notify(ref CrawlComplete task) {
+        writeln(task);
         registry.completedCrawl();
       }
 
       void notify(ref ProjectVersionedSubPackage task) {
+        writeln(task);
         registry.addVersionedSubPackage(task.parent, task.ref_, task.path, task.subPackage);
       }
     }
