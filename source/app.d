@@ -27,7 +27,7 @@ auto periodicSync(StopToken stopToken, Registry[] registries) {
 				import std.algorithm : each;
 				do {
 					registries.each!(r => r.sync(stopToken));
-				} while (stopToken.wait(dur!"seconds"(5)));
+				} while (stopToken.wait(dur!"seconds"(60)));
 			}, stopToken, registries));
 }
 
