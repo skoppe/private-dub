@@ -28,13 +28,17 @@ Better yet, put the following in `~/.dub/settings.json` or `/%APPDATA%\dub\setti
 
 Yes, it will also resolve packages from [code.dlang.org](https://code.dlang.org).
 
-To avoid name clashes you should prefix your packages with your hostname, like so:
+To avoid name clashes you should prefix your packages, like so:
 
 ```sdl
 name "gitlab.example.com.my-project"
 dependency "gitlab.example.com.another-project" version="~>1.2.3"
 dependency "vibe-d" version="~>3.4.5"
 ```
+
+The default prefix is your `<hostname>.` but it can be configured in the config. Make a concious choice here, it is hard to change later.
+
+Prefixing is not required however.
 
 > NOTE: Even though the documentation on [code.dlang.org](https://code.dlang.org) states that only alphanumerics and '-' are allowed, since there is no enforcement, we decided to take this approach.
 

@@ -73,7 +73,7 @@ public:
   }
 
   string getPrefix() {
-    return config.hostname ~ ".";
+    return config.prefix ~ ".";
   }
 
   PackageMeta[] search(string name) {
