@@ -43,6 +43,10 @@ private:
     return Guard!(DlangRegistry).acquire(this, cast() this.mutex);
   }
 
+  auto lock() @trusted {
+    return (cast(shared)this).lock();
+  }
+
 public:
   this(DlangRegistryConfig config) {
     this.config = config;
@@ -120,15 +124,18 @@ public:
     if (auto j = name in cache)
       return *j;
 
-    auto path = buildPath(storage, getPackageDir(name), name);
-    auto content = parseJsonString(readText(path));
-    cache[name] = content;
-    return content;
+    /// lock in case to avoid a git pull happening at the same time
+    with (lock()) {
+      auto path = buildPath(storage, getPackageDir(name), name);
+      auto content = parseJsonString(readText(path));
+      cache[name] = content;
+      return content;
+    }
   }
 }
 
 // Dub stores a dub package's 'version' internally WITHOUT a leading 'v' in the case of a
-// semver version and WITH a leading '~' in the case of a branched.
+// semver version and WITH a leading '~' in the case of a branch.
 // We just use the EXACT same ref as found in the git repo.
 string normalizeVersion(string ver) {
   import privatedub.resolve;
