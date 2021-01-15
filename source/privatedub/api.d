@@ -77,9 +77,11 @@ void getPackages(MatchedPath path, Registry[] registries, Cgi cgi) {
 void getInfos(MatchedPath path, Registry[] registries, Cgi cgi) {
   import dub.internal.vibecompat.data.json : Json, parseJsonString;
   import std.format : format;
+  import std.exception : enforce;
 
   try {
     Json packages = parseJsonString(path.query["packages"]);
+    enforce(packages.length > 0, "must request at least one package");
     auto aa = resolve(registries, packages[0].get!string);
     cgi.setResponseContentType("application/json");
     cgi.setResponseStatus("200 Ok");
