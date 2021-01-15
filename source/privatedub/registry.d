@@ -1,6 +1,6 @@
 module privatedub.registry;
 
-import kaleidic.experimental.concurrency.stoptoken;
+import concurrency.stoptoken;
 import dub.recipe.packagerecipe;
 import dub.recipe.json;
 import dub.internal.vibecompat.data.json;

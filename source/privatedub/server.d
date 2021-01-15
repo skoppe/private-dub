@@ -1,10 +1,10 @@
 module privatedub.server;
 import arsd.cgi;
-import kaleidic.experimental.concurrency.nursery;
-import kaleidic.experimental.concurrency.thread;
-import kaleidic.experimental.concurrency.operations;
-import kaleidic.experimental.concurrency.utils : closure;
-import kaleidic.experimental.concurrency.stoptoken : onStop, StopToken;
+import concurrency.nursery;
+import concurrency.thread;
+import concurrency.operations;
+import concurrency.utils : closure;
+import concurrency.stoptoken : onStop, StopToken;
 
 public import arsd.cgi : Cgi;
 

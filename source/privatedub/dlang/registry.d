@@ -1,7 +1,7 @@
 module privatedub.dlang.registry;
 
 import privatedub.registry;
-import kaleidic.experimental.concurrency.stoptoken;
+import concurrency.stoptoken;
 import dub.internal.vibecompat.data.json : Json, parseJsonString;
 import dub.recipe.packagerecipe : PackageRecipe, BuildSettingsTemplate;
 import std.typecons : Nullable;

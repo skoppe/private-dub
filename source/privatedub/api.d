@@ -7,10 +7,10 @@ import std.meta : AliasSeq;
 import std.typecons : Nullable;
 
 auto api(Registry[] registries) {
-  import kaleidic.experimental.concurrency.nursery;
-  import kaleidic.experimental.concurrency.thread;
-  import kaleidic.experimental.concurrency.operations;
-  import kaleidic.experimental.concurrency.utils;
+  import concurrency.nursery;
+  import concurrency.thread;
+  import concurrency.operations;
+  import concurrency.utils;
 
   auto regs = registries.dup();
   auto nursery = new shared Nursery();

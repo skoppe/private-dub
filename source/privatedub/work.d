@@ -99,7 +99,7 @@ struct WorkQueue(Ts...) {
 }
 
 struct Scheduler(Queue) {
-  import kaleidic.experimental.concurrency.stoptoken : StopToken;
+  import concurrency.stoptoken : StopToken;
   Queue queue;
   bool drain(Runner, Args...)(StopToken stopToken, auto ref Runner runner, auto ref Args args) {
     return drainQueue(stopToken, queue, runner, args);

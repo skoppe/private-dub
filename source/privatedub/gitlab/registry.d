@@ -3,7 +3,7 @@ module privatedub.gitlab.registry;
 import privatedub.gitlab.api;
 import privatedub.gitlab.config;
 import privatedub.work;
-import kaleidic.experimental.concurrency.stoptoken;
+import concurrency.stoptoken;
 import privatedub.registry;
 import sumtype;
 import std.algorithm : map, filter, joiner;
