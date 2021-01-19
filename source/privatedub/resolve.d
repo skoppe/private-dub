@@ -6,6 +6,7 @@ import dub.recipe.packagerecipe : PackageRecipe, BuildSettingsTemplate, Configur
 import std.typecons : Nullable;
 // import dub.recipe.json;
 import dub.internal.vibecompat.data.json : Json;
+import dsemver.semver : SemVer, parseSemVer;
 
 PackageMeta[string] resolve(Registry[] registries, string name) {
   import std.array : Appender, array;
@@ -165,30 +166,39 @@ bool isReleaseVersion(string ver) {
 }
 
 struct Version {
-  int x, y, z;
+  string input;
+  SemVer semver;
   int opCmp(ref const Version o) {
-    int dx = x - o.x, dy = y - o.y, dz = z - o.z;
-    if (dx != 0)
-      return dx;
-    if (dy != 0)
-      return dy;
-    return dz;
+    return semver.opCmp(o.semver);
+  }
+  string toString() {
+    return input;
   }
 }
 
 Nullable!Version parseVersion(string v) {
+  import dsemver.semver : parseSemVer;
   import std.regex : ctRegex, matchFirst;
   import std.algorithm : map;
   import std.conv : to;
   import std.range : dropOne;
 
-  enum reg = ctRegex!(`^v?([0-9]+)\.([0-9]+)\.([0-9]+)`);
-  auto matches = v.matchFirst(reg);
-  if (!matches)
+  try {
+    return typeof(return)(Version(v, parseSemVer(v)));
+  } catch (Exception e) {
     return typeof(return).init;
-  return typeof(return)(Version(matches.dropOne.map!(to!int)
-      .toTuple!3
-      .expand));
+  }
+}
+
+auto highestVersion(VersionedPackage[] ps) {
+  import std.algorithm : maxElement, map, filter;
+  import std.typecons : tuple;
+  import privatedub.util : andThen;
+
+  return ps.map!(p => parseVersion(p.ref_).andThen!(v => tuple!("orderable","ref_")(v,p.ref_)))
+    .filter!(t => !t.isNull)
+    .maxElement!(t => t.orderable)
+    .ref_;
 }
 
 auto highestReleaseVersion(VersionedPackage[] ps) {
@@ -201,6 +211,19 @@ auto highestReleaseVersion(VersionedPackage[] ps) {
     .filter!(t => !t.isNull)
     .maxElement!(t => t.orderable)
     .ref_;
+}
+
+unittest {
+  import unit_threaded;
+
+  auto set1 = [VersionedPackage("0.0.3"), VersionedPackage("0.0.1"), VersionedPackage("0.0.2")];
+  auto set2 = [VersionedPackage("0.0.3-beta.1"), VersionedPackage("0.0.3-beta.2"), VersionedPackage("0.0.3-beta.4"), VersionedPackage("0.0.2")];
+
+  highestReleaseVersion(set1).shouldEqual("0.0.3");
+  highestVersion(set1).shouldEqual("0.0.3");
+
+  highestReleaseVersion(set2).shouldEqual("0.0.2");
+  highestVersion(set2).shouldEqual("0.0.3-beta.4");
 }
 
 template toTuple(size_t n) {

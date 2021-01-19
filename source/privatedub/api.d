@@ -61,7 +61,7 @@ void getPackages(MatchedPath path, Registry[] registries, Cgi cgi) {
       cgi.write(`[]`);
     } else {
       auto results = reg.search(q);
-      auto sr = results.map!(result => SearchResult(result.name, null, result.versions.highestReleaseVersion().stripLeft("v")));
+      auto sr = results.map!(result => SearchResult(result.name, null, result.versions.highestVersion().stripLeft("v")));
       cgi.write(sr.serializeToJson());
     }
   } catch (Exception e) {
