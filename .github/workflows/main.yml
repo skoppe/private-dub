@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        dc: [ldc-latest]
+        dc: [ldc-latest, dmd-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
