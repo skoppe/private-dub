@@ -198,7 +198,7 @@ void cgiMainImpl(alias fun, CustomCgi = Cgi, long maxContentLength = defaultMaxC
 			int i = cast(int)addr.sizeof;
 		else
 			uint i = addr.sizeof;
-		socket_t connection = cast(socket_t)accept(sock, &addr, &i);
+		immutable connection = cast(socket_t)accept(sock, &addr, &i);
 		if(connection == -1) {
 			version (Windows) {
 				const err = WSAGetLastError();
@@ -212,7 +212,17 @@ void cgiMainImpl(alias fun, CustomCgi = Cgi, long maxContentLength = defaultMaxC
 		}
 		int opt = 1;
 		setsockopt(connection, IPPROTO_TCP, TCP_NODELAY, &opt, opt.sizeof);
-		auto child = closure((socket_t connection, StopToken stopToken) @safe => runChild!(fun)(connection, stopToken), connection, stopToken);
-		nursery.run(ThreadSender().then(child));
+    struct Temp {
+      socket_t connection;
+      StopToken stopToken;
+      this(socket_t connection, StopToken stopToken) {
+        this.connection = connection;
+        this.stopToken = stopToken;
+      }
+      void run() {
+        runChild!(fun)(cast()connection, cast()stopToken);
+      }
+    }
+		nursery.run(ThreadSender().then(cast(void delegate() shared @safe)&(new Temp(connection, stopToken)).run));
 	}
 }

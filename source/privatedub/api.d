@@ -15,7 +15,7 @@ auto api(Registry[] registries) {
   auto regs = registries.dup();
   auto nursery = new shared Nursery();
 
-  nursery.run(ThreadSender().then(closure((Registry[] regs) shared {
+  nursery.run(ThreadSender().then(closure((shared Nursery nursery, Registry[] regs) @trusted {
         import std.stdio;
         import std.traits : getUDAs;
 
@@ -39,7 +39,7 @@ auto api(Registry[] registries) {
 
 
         runCgi!(handleConnection)(nursery, 8889, "0.0.0.0");
-        }, regs)));
+        }, nursery, regs)));
   return nursery;
 }
 
