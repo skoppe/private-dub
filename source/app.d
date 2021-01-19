@@ -21,7 +21,7 @@ auto periodicSync(StopToken stopToken, Registry[] registries) {
 	import concurrency.thread;
 	import concurrency.operations;
 
-	return ThreadSender().then(closure((StopToken stopToken, Registry[] registries) shared @safe {
+	return ThreadSender().then(closure((StopToken stopToken, Registry[] registries) @safe {
 				import concurrency.timer;
 				import core.time : dur;
 				import std.algorithm : each;
