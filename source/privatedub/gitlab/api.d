@@ -154,10 +154,7 @@ struct GitlabResponse {
       return Content(TextContent(response));
     return Content(RawContent(response));
   }
-  // get Link header // for keyset pagination
 
-  // get X-Page header // for offset based pagination
-  // get X-Total-Page header
   Nullable!Link getLink(string rel) {
     import std.algorithm : find;
     import std.range : empty, front;
@@ -189,11 +186,6 @@ struct GitlabResponse {
     return PaginatedGitlabResponse(this);
   }
 }
-// initially we need to fetch all projects, then all dub.sdl/dub.json 's, then all tags, this will give us a base list
-
-// then we need to sync that list by querying the events endpoint every 5 min.
-
-// on top of that we clone the dub-packages-index and pull that every 5 min.
 
 GitlabResponse callProjectsEndpoint(GitlabConfig config) {
   return GitlabResponse(config.makeRequest()
