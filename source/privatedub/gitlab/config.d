@@ -1,5 +1,7 @@
 module privatedub.gitlab.config;
 
+import requests;
+
 struct GitlabConfig {
   import dini : IniSection;
 
@@ -9,6 +11,7 @@ struct GitlabConfig {
   string storage = "./storage";
   int priority = 2;
   string prefix;
+  Interceptor interceptor = null;
 
   string baseUrl() const {
     return "https://" ~ hostname ~ "/api/v4";

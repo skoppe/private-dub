@@ -41,6 +41,7 @@ struct List(T) {
 }
 
 struct WorkQueue(Ts...) {
+  alias WorkItems = Ts;
   import std.typecons : Nullable;
   import std.array : array;
   import std.exception : enforce;

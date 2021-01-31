@@ -29,3 +29,12 @@ configuration "unittest" {
 	excludedSourceFiles "source/app.d"
 	preBuildCommands "$DUB run --compiler=$$DC unit-threaded -c gen_ut_main -- -f bin/ut.d -d $DUB"
 }
+
+configuration "it" {
+	dependency "unit-threaded" version=">=0.0.0"
+	targetType "executable"
+	mainSourceFile "tests/it/it_runner.d"
+	sourcePaths "source" "tests/it"
+	importPaths "source" "tests/it"
+	excludedSourceFiles "source/app.d"
+}

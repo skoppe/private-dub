@@ -27,8 +27,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-dub-
 
-      - name: Run tests
-        run: dub test
-
-      - name: Build
-        run: dub build
+      - name: Test and Build
+        run: |
+          dub test
+          dub -c it -b unittest
+          dub build

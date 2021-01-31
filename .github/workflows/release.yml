@@ -32,6 +32,8 @@ jobs:
 
       - name: Build
         run: |
+          dub test
+          dub -c it -b unittest
           dub build --build=release
           zip --junk-paths private-dub.zip private-dub
 

@@ -13,6 +13,8 @@ auto makeRequest(GitlabConfig config) {
   import requests;
 
   auto rq = Request();
+  if (config.interceptor)
+    rq.addInterceptor(cast()config.interceptor);
   rq.addHeaders(["PRIVATE-TOKEN": config.token]);
   return rq;
 }
