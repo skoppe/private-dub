@@ -144,34 +144,76 @@ struct CrawlEvents {
     auto events = config.getEvents("pushed", after).paginate()
       .map!(p => p.content.tryMatch!((JsonContent content) => content.expectJSONArray())).joiner();
 
-    auto app = appender!(FetchVersionedPackageFile[]);
+    auto app = appender!(NewTagEvent[]);
     foreach (event; events) {
-      if (event["action_name"].str != "pushed new")
+      auto newTagOpt = event.extractNewTagEvent;
+      if (newTagOpt.isNull)
         continue;
-      if ("push_data" !in event)
-        continue;
-      auto push = event["push_data"];
-      if (push["action"].str != "created")
-        continue;
-      if (push["ref_type"].str != "tag")
-        continue;
-      auto projectId = cast(int) event["project_id"].integer;
-      auto ref_ = push["ref"].str;
-      auto commitId = push["commit_to"].str;
-      if (!registry.hasProjectRef(projectId, ref_, commitId))
-        app.put(FetchVersionedPackageFile(projectId, ref_, commitId));
+      auto newTag = newTagOpt.get;
+      if (!registry.hasProjectRef(newTag.projectId, newTag.ref_, newTag.commitId))
+        app.put(newTag);
     }
     auto chunks = app.data
       .sort!((a, b) => a.projectId < b.projectId)
       .chunkBy!(a => a.projectId);
+
     foreach (chunk; chunks) {
-      queue.enqueue(queue.serial(queue.parallel(chunk[1].array()), MarkProjectCrawled(chunk[0])));
+      queue.enqueue(ProjectUpdate(chunk[0], chunk[1].array()));
     }
   }
 }
 
+struct ProjectUpdate {
+  int projectId;
+  NewTagEvent[] tagEvents;
+  void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config,
+                      shared GitlabRegistry registry) {
+    import std.array : array;
+
+    auto project = config.getProject(projectId).content.tryMatch!((JsonContent content) => content.json());
+    auto namespace = project["path_with_namespace"].str;
+    auto events = tagEvents.map!(event => FetchVersionedPackageFile(projectId, namespace, event.ref_, event.commitId));
+
+    queue.enqueue(queue.serial(queue.parallel(events.array()), MarkProjectCrawled(projectId)));
+  }
+}
+
+struct NewTagEvent {
+  int projectId;
+  string ref_;
+  string commitId;
+}
+
+Nullable!NewTagEvent extractNewTagEvent(JSONValue event) {
+  if (event["action_name"].str != "pushed new")
+    return typeof(return).init;
+  if ("push_data" !in event)
+    return typeof(return).init;
+  auto push = event["push_data"];
+  if (push["action"].str != "created")
+    return typeof(return).init;
+  if (push["ref_type"].str != "tag")
+    return typeof(return).init;
+  auto projectId = cast(int) event["project_id"].integer;
+  auto ref_ = push["ref"].str;
+  auto commitId = push["commit_to"].str;
+  return typeof(return)(NewTagEvent(projectId, ref_, commitId));
+}
+
+@("events.extract.NewTagEvent")
+unittest {
+  import unit_threaded;
+  import std.json : parseJSON;
+  enum rawEvent = `{"action_name":"pushed new","author":{"avatar_url":"https:\/\/git.example.com\/uploads\/-\/system\/user\/avatar\/42\/avatar.png","id":42,"name":"John Doe","state":"active","username":"jdoe","web_url":"https:\/\/git.examples.com\/jdoe"},"author_id":42,"author_username":"jdoe","created_at":"2021-10-10T10:39:42.931Z","id":23403,"project_id":892,"push_data":{"action":"created","commit_count":1,"commit_from":null,"commit_title":"Some commit","commit_to":"3ee2d8ef4875b4b3c4798dbc3b6fea1447a5f51c","ref":"v2.9.9","ref_count":null,"ref_type":"tag"},"target_id":null,"target_iid":null,"target_title":null,"target_type":null}`;
+  auto tagEvent = extractNewTagEvent(parseJSON(rawEvent));
+  tagEvent.isNull.shouldBeFalse;
+  tagEvent.projectId.should == 892;
+  tagEvent.ref_.should == "v2.9.9";
+  tagEvent.commitId.should == "3ee2d8ef4875b4b3c4798dbc3b6fea1447a5f51c";
+}
+
 alias CrawlerWorkQueue = WorkQueue!(FindProjects, DetermineDubPackage, FetchTags, FetchVersionedPackageFile, ProjectVersionedPackage, MarkProjectCrawled,
-    CrawlComplete, CrawlEvents, FetchProjectSubPackage, ProjectVersionedSubPackage);
+                                    CrawlComplete, CrawlEvents, FetchProjectSubPackage, ProjectVersionedSubPackage, ProjectUpdate);
 
 alias CrawlerScheduler = Scheduler!CrawlerWorkQueue;
 

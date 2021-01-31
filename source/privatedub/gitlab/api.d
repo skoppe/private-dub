@@ -38,6 +38,11 @@ struct Endpoints {
         encodeComponent(filePath) ~ "?ref=" ~ ref_);
   }
 
+  string project(int projectId) {
+    import std.conv : to;
+    return buildPath(projects(), projectId.to!string);
+  }
+
   string tags(int projectId) {
     import std.conv : to;
 
@@ -191,6 +196,10 @@ GitlabResponse callProjectsEndpoint(GitlabConfig config) {
   return GitlabResponse(config.makeRequest()
       .get(config.endpoints.projects() ~ "?pagination=keyset&per_page=50&order_by=id&sort=asc"),
       config);
+}
+
+GitlabResponse getProject(GitlabConfig config, int projectId) {
+  return GitlabResponse(config.makeRequest().get(config.endpoints.project(projectId)), config);
 }
 
 GitlabResponse getProjectFile(GitlabConfig config, int id, string filepath, string ref_) {
