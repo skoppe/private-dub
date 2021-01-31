@@ -12,7 +12,7 @@ import dub.recipe.packagerecipe;
 import std.json : JSONValue;
 
 struct FindProjects {
-  void run(WorkQueue)(ref WorkQueue queue, immutable GitlabConfig config,
+  void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config,
       shared GitlabRegistry registry) {
     auto projects = config.callProjectsEndpoint().paginate()
       .map!(p => p.content.tryMatch!((JsonContent content) => content.json.array)).joiner();
@@ -29,7 +29,7 @@ struct FindProjects {
 struct DetermineDubPackage {
   int projectId;
   string namespace;
-  void run(WorkQueue)(ref WorkQueue queue, immutable GitlabConfig config) {
+  void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config) {
     if (config.isDubPackage(projectId))
       queue.enqueue(FetchTags(projectId, namespace));
   }
@@ -38,7 +38,7 @@ struct DetermineDubPackage {
 struct FetchTags {
   int projectId;
   string namespace;
-  void run(WorkQueue)(ref WorkQueue queue, immutable GitlabConfig config) {
+  void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config) {
     import std.json;
 
     auto tags = config.getProjectTags(projectId).paginate()
@@ -62,7 +62,7 @@ struct FetchVersionedPackageFile {
   string namespace;
   string ref_;
   string commitId;
-  void run(WorkQueue)(ref WorkQueue queue, immutable GitlabConfig config) {
+  void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config) {
     import privatedub.util : orElse;
 
     auto parseProjectFile(string path) {
@@ -85,7 +85,7 @@ struct FetchProjectSubPackage {
   int projectId;
   string ref_;
   string path;
-  void run(WorkQueue)(ref WorkQueue queue, immutable GitlabConfig config) {
+  void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config) {
     import std.path : buildPath;
     import privatedub.util : orElse;
 
@@ -135,7 +135,7 @@ struct CrawlEvents {
   import std.datetime.date : Date;
 
   Date after;
-  void run(WorkQueue)(ref WorkQueue queue, immutable GitlabConfig config,
+  void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config,
       shared GitlabRegistry registry) {
     import std.array : appender, array;
     import std.algorithm : sort, chunkBy;
@@ -175,7 +175,7 @@ alias CrawlerWorkQueue = WorkQueue!(FindProjects, DetermineDubPackage, FetchTags
 
 alias CrawlerScheduler = Scheduler!CrawlerWorkQueue;
 
-Nullable!PackageRecipe parseProjectFile(immutable GitlabConfig config,
+Nullable!PackageRecipe parseProjectFile(GitlabConfig config,
     int projectId, string filename, string ref_) {
   import std.base64;
   import std.exception : enforce;

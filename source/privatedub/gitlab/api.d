@@ -5,7 +5,7 @@ import sumtype;
 import std.datetime.date : Date;
 import privatedub.gitlab.config;
 
-Endpoints endpoints(immutable GitlabConfig config) {
+Endpoints endpoints(GitlabConfig config) {
   return Endpoints(config.baseUrl);
 }
 

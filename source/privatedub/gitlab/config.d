@@ -10,7 +10,7 @@ struct GitlabConfig {
   int priority = 2;
   string prefix;
 
-  string baseUrl() immutable {
+  string baseUrl() const {
     return "https://" ~ hostname ~ "/api/v4";
   }
 

@@ -45,8 +45,8 @@ class GitlabRegistry : Registry {
 
 private:
   GitlabDubPackage[string] packages;
-  immutable GitlabConfig config;
-  immutable string packagesPath;
+  GitlabConfig config;
+  string packagesPath;
   enum string storageVersion = "1"; // increment when we modify the stuff we save to disk, it will trigger a recrawl
   Mutex mutex;
   Nullable!Date lastCrawl;
@@ -267,7 +267,7 @@ public:
     if ((cast() lastCrawl).isNull) {
       writeln(config.hostname, ": syncing metadata, this may take a few minutes.");
       crawler.queue.enqueue(crawler.queue.serial(FindProjects(), CrawlComplete()));
-      if (!crawler.drain(stopToken, CrawlerResultNotifier(this), config, this)) {
+      if (!crawler.drain(stopToken, CrawlerResultNotifier(this), cast()config, this)) {
         writeln(config.hostname, ": syncing cancelled.");
         return;
       }
@@ -276,7 +276,7 @@ public:
     assert(!(cast() lastCrawl).isNull);
     crawler.queue.enqueue(crawler.queue.serial(CrawlEvents((cast() lastCrawl)
         .get), CrawlComplete()));
-    if (!crawler.drain(stopToken, CrawlerResultNotifier(this), config, this))
+    if (!crawler.drain(stopToken, CrawlerResultNotifier(this), cast()config, this))
       writeln(config.hostname, ": syncing cancelled.");
   }
 }
