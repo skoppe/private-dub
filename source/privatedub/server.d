@@ -104,10 +104,11 @@ void cgiMainImpl(alias fun, CustomCgi = Cgi, long maxContentLength = defaultMaxC
 			try {
 				cgi = new CustomCgi(ir, &closeConnection);
 				cgi._outputFileHandle = s;
-			}
-			catch (Throwable t) {
+			}	catch (Exception t) {
 				if (cast(SocketOSException)t is null && cast(ConnectionException)t is null)
 					sendAll(ir.source, plainHttpError(false, "400 Bad Request", t));
+        break;
+      } catch (Throwable t) {
 				ir.source.close();
 				throw t;
 			}
