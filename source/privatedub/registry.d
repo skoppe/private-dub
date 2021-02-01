@@ -42,6 +42,7 @@ interface Registry {
   int priority();
   void sync(StopToken stopToken) shared @trusted;
   void sync(StopToken stopToken) @trusted;
+  bool readyForQueries();
 }
 
 @("Ensure we can use slash in name and dependency")

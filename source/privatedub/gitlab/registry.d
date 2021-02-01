@@ -237,6 +237,10 @@ public:
     (cast(shared) this).sync(stopToken);
   }
 
+  bool readyForQueries() {
+    return !lastCrawl.isNull;
+  }
+
   void sync(StopToken stopToken) shared @trusted {
     import std.stdio;
     import privatedub.gitlab.crawler;

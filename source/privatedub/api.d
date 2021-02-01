@@ -111,6 +111,15 @@ void getDownloadUri(MatchedPath path, Registry[] registries, Cgi cgi) {
   cgi.close();
 }
 
+@(Path("/status/readyforqueries"))
+void isReadyForQueries(MatchedPath path, Registry[] registries, Cgi cgi) {
+  import std.algorithm : all;
+  if (registries.all!(r => r.readyForQueries()))
+    cgi.setResponseStatus("204 No Content");
+  else
+    cgi.setResponseStatus("503 Service Unavailable");
+}
+
 struct SearchResult {
   import asdf : serializationKeys;
   string name;

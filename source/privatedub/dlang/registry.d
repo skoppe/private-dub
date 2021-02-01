@@ -65,6 +65,10 @@ public:
     }
   }
 
+  bool readyForQueries() {
+    return true;
+  }
+
   int priority() {
     return config.priority;
   }
