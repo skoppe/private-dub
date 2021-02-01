@@ -45,27 +45,7 @@ unittest {
   CrawlEvents().run(queue, gitlabConfig, registry);
   auto items = queue.flatten();
 
-  items.should == [WorkST(ProjectUpdate(892, [NewTagEvent(892, "v2.9.9", "3ee2d8ef4875b4b3c4798dbc3b6fea1447a5f51c")]))];
-}
-
-@("ProjectUpdate")
-unittest {
-  class MockInterceptor : Interceptor {
-    Response opCall(Request rq, RequestHandler next)
-    {
-      return MockResponse.json(`{"path_with_namespace": "group/project"}`, 200);
-    }
-  }
-
-  auto gitlabConfig = GitlabConfig("abcd","git.example.com","./tmp/storage",1,"test.", new MockInterceptor());
-  CrawlerWorkQueue queue;
-  auto registry = cast(shared) new GitlabRegistry(gitlabConfig);
-
-  ProjectUpdate(892, [NewTagEvent(892, "v2.9.9", "3ee2d8ef4875b4b3c4798dbc3b6fea1447a5f51c")]).run(queue, gitlabConfig, registry);
-
-  auto items = queue.flatten();
-  items.should == [WorkST(FetchVersionedPackageFile(892, "group/project", "v2.9.9", "3ee2d8ef4875b4b3c4798dbc3b6fea1447a5f51c")),
-                   WorkST(MarkProjectCrawled(892, ""))];
+  items.should == [WorkST(FetchVersionedPackageFile(892, "v2.9.9", "3ee2d8ef4875b4b3c4798dbc3b6fea1447a5f51c")), WorkST(MarkProjectCrawled(892, ""))];
 }
 
 auto flatten(Queue)(Queue queue) {

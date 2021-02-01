@@ -16,14 +16,12 @@ import std.typecons : Nullable;
 
 struct GitlabDubPackage {
   int projectId;
-  string namespace;
   string name;
   VersionedPackage[] versions;
   Json toJson() {
     Json json = Json.emptyObject();
     json["versions"] = versions.map!(v => v.toJson()).array();
     json["projectId"] = projectId;
-    json["namespace"] = namespace;
     json["name"] = name;
     return json;
   }
@@ -32,7 +30,6 @@ struct GitlabDubPackage {
     auto p = GitlabDubPackage();
     p.projectId = json["projectId"].get!int;
     p.name = json["name"].get!string;
-    p.namespace = json["namespace"].get!string;
     p.versions = json["versions"][].map!(VersionedPackage.fromJson).array();
     return p;
   }
@@ -47,13 +44,38 @@ private:
   GitlabDubPackage[string] packages;
   GitlabConfig config;
   string packagesPath;
-  enum string storageVersion = "1"; // increment when we modify the stuff we save to disk, it will trigger a recrawl
+  enum string storageVersion = "2"; // increment when we modify the stuff we save to disk, it will trigger a recrawl
   Mutex mutex;
   Nullable!Date lastCrawl;
   auto lock() shared {
     import privatedub.sync : Guard;
 
     return Guard!(GitlabRegistry).acquire(this, cast() this.mutex);
+  }
+
+  string getIndex(string name, int projectId) {
+    import std.format : format;
+    return format("%s-%s", name, projectId);
+  }
+
+  string getIndex(GitlabDubPackage pack) {
+    return getIndex(pack.name, pack.projectId);
+  }
+
+  bool addPackage(GitlabDubPackage pack) {
+    if (!findPackage(pack.name).isNull)
+      return false;
+    auto index = getIndex(pack);
+    packages[index] = pack;
+    return true;
+  }
+
+  private Nullable!GitlabDubPackage findPackage(string name) {
+    import std.algorithm : find;
+    auto it = packages.byValue.find!(p => p.name == name);
+    if (it.empty)
+      return typeof(return).init;
+    return typeof(return)(it.front);
   }
 
 public:
@@ -84,15 +106,14 @@ public:
   PackageMeta getPackageMeta(string name) {
     import std.algorithm : startsWith;
     import std.exception : enforce;
-    enforce(hasPackage(name), "Cannot find package "~name);
+    auto pack = findPackage(name);
+    enforce(!pack.isNull, "Cannot find package "~name);
 
-    return PackageMeta(this, name, packages[name].versions);
+    return PackageMeta(this, name, pack.get.versions);
   }
 
   bool hasPackage(string name) {
-    if (name in packages)
-      return true;
-    return false;
+    return !findPackage(name).isNull;
   }
 
   bool hasProjectRef(int projectId, string ref_, string commitId) shared {
@@ -122,27 +143,37 @@ public:
     return uri~extra;
   }
 
-  private void addVersionedPackage(int projectId, string namespace, VersionedPackage p) shared {
+  private GitlabDubPackage* getPackage(int projectId, string name) {
+    return getIndex(name, projectId) in packages;
+  }
+
+  private void addVersionedPackage(int projectId, VersionedPackage p) shared {
     with (lock()) {
       import std.algorithm : canFind, countUntil;
+      import std.conv : to;
+      import std.stdio : stderr, writeln;
 
-      if (auto pack = p.recipe.name in packages) {
+      auto name = p.recipe.name;
+      auto pack = getPackage(projectId, name);
+      if (pack is null) {
+        if (!addPackage(GitlabDubPackage(projectId, name, [p])))
+          stderr.writeln("Package with name '"~name~"' is duplicate, skipping. Please change the package name of projectId "~projectId.to!string~" if you want it served here.");
+      } else {
         auto idx = pack.versions.countUntil!(v => v.ref_ == p.ref_);
         if (idx == -1)
           pack.versions = pack.versions ~ p;
         else
           pack.versions[idx] = p;
-        return;
       }
-      packages[p.recipe.name] = GitlabDubPackage(projectId, namespace, p.recipe.name, [p]);
     }
   }
 
-  private void addVersionedSubPackage(string parent, string ref_, string path, PackageRecipe p) shared {
+  private void addVersionedSubPackage(int parentId, string parentName, string ref_, string path, PackageRecipe p) shared {
     with (lock()) {
       import std.algorithm : countUntil;
 
-      if (auto pack = parent in packages) {
+      auto pack = getPackage(parentId, parentName);
+      if (pack !is null) {
         auto idx = pack.versions.countUntil!(v => v.ref_ == ref_);
         if (idx == -1) {
           return;
@@ -161,12 +192,12 @@ public:
 
   private void saveProject(int projectId) shared {
     with (lock()) {
-      import std.algorithm : find;
+      import std.algorithm : find, each;
       import std.range : empty, front;
 
-      auto r = packages.byValue.find!(p => p.projectId == projectId);
-      if (!r.empty)
-        saveToDisk(r.front());
+      packages.byValue
+        .filter!(p => p.projectId == projectId)
+        .each!(p => saveToDisk(p));
     }
   }
 
@@ -175,7 +206,7 @@ public:
     import std.file : write, rename, remove;
     import std.conv : text;
 
-    auto filename = buildPath(packagesPath, p.name ~ ".json");
+    auto filename = buildPath(packagesPath, getIndex(p) ~ ".json");
     auto tmpfilename = filename ~ ".tmp";
 
     write(tmpfilename, p.toJson().toString());
@@ -191,11 +222,13 @@ public:
       string ver = readText(versionFile);
       if (ver != storageVersion) {
         writeln(config.hostname, ": cache format changed, need to re-sync");
+        clearRegistry();
         return;
       }
       lastCrawl = Nullable!Date(Date.fromISOExtString(readText(lastCrawlFile)));
     }
     catch (Exception e) {
+      clearRegistry();
       // if something bad happens we will just abort the loading and resync the whole thing
       // on the next call to sync
       return;
@@ -204,8 +237,18 @@ public:
       if (name.extension != ".json")
         continue;
       auto p = GitlabDubPackage.fromJson(parseJsonString(readText(name)));
-      packages[p.name] = p;
+      if (!addPackage(p)) {
+        stderr.writeln("Duplicate package with name '"~p.name~"' on disk, skipping. Duplicate entry is '"~ name ~"'. Please remove file manually.");
+      }
     }
+  }
+
+  private void clearRegistry() {
+    import std.file : mkdirRecurse, rmdirRecurse;
+
+    rmdirRecurse(packagesPath);
+    mkdirRecurse(packagesPath);
+    lastCrawl = typeof(lastCrawl).init;
   }
 
   private void completedCrawl() shared {
@@ -249,7 +292,7 @@ public:
       shared GitlabRegistry registry;
       void notify(ref ProjectVersionedPackage task) {
         writeln(task);
-        registry.addVersionedPackage(task.projectId, task.namespace, task.package_);
+        registry.addVersionedPackage(task.projectId, task.package_);
       }
 
       void notify(ref MarkProjectCrawled task) {
@@ -263,7 +306,7 @@ public:
 
       void notify(ref ProjectVersionedSubPackage task) {
         writeln(task);
-        registry.addVersionedSubPackage(task.parent, task.ref_, task.path, task.subPackage);
+        registry.addVersionedSubPackage(task.parentId, task.parentName, task.ref_, task.path, task.subPackage);
       }
     }
 
@@ -283,10 +326,6 @@ public:
     if (!crawler.drain(stopToken, CrawlerResultNotifier(this), cast()config, this))
       writeln(config.hostname, ": syncing cancelled.");
   }
-}
-
-void sync(shared GitlabRegistry registry) {
-
 }
 
 Date yesterday() {

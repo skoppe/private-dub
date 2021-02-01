@@ -21,23 +21,21 @@ struct FindProjects {
       if (registry.hasProject(id)) {
         continue;
       }
-      queue.enqueue(queue.serial(DetermineDubPackage(id, project["path_with_namespace"].str), MarkProjectCrawled(id)));
+      queue.enqueue(queue.serial(DetermineDubPackage(id), MarkProjectCrawled(id)));
     }
   }
 }
 
 struct DetermineDubPackage {
   int projectId;
-  string namespace;
   void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config) {
     if (config.isDubPackage(projectId))
-      queue.enqueue(FetchTags(projectId, namespace));
+      queue.enqueue(FetchTags(projectId));
   }
 }
 
 struct FetchTags {
   int projectId;
-  string namespace;
   void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config) {
     import std.json;
 
@@ -52,14 +50,13 @@ struct FetchTags {
           }
         })).joiner();
     foreach (tag; tags)
-      queue.enqueue(FetchVersionedPackageFile(projectId, namespace,
+      queue.enqueue(FetchVersionedPackageFile(projectId,
           tag["name"].str, tag["commit"]["id"].str));
   }
 }
 
 struct FetchVersionedPackageFile {
   int projectId;
-  string namespace;
   string ref_;
   string commitId;
   void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config) {
@@ -72,17 +69,16 @@ struct FetchVersionedPackageFile {
     auto recipeOpt = parseProjectFile("dub.sdl").orElse(parseProjectFile("dub.json"));
     if (!recipeOpt.isNull) {
       auto recipe = recipeOpt.get();
-      queue.enqueue(ProjectVersionedPackage(projectId, namespace, VersionedPackage(ref_, commitId, recipe)));
+      queue.enqueue(ProjectVersionedPackage(projectId, VersionedPackage(ref_, commitId, recipe)));
       if (recipe.subPackages.length > 0)
-        recipe.subPackages.filter!(sub => sub.path.length > 0).each!(sub => queue.enqueue(FetchProjectSubPackage(recipe.name,
-            projectId, ref_, sub.path)));
+        recipe.subPackages.filter!(sub => sub.path.length > 0).each!(sub => queue.enqueue(FetchProjectSubPackage(projectId, recipe.name, ref_, sub.path)));
     }
   }
 }
 
 struct FetchProjectSubPackage {
-  string parent;
-  int projectId;
+  int parentId;
+  string parentName;
   string ref_;
   string path;
   void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config) {
@@ -90,24 +86,24 @@ struct FetchProjectSubPackage {
     import privatedub.util : orElse;
 
     auto parseProjectFile(string path) {
-      return .parseProjectFile(config, projectId, path, ref_);
+      return .parseProjectFile(config, parentId, path, ref_);
     }
 
     auto recipeOpt = parseProjectFile(buildPath(path, "dub.sdl")).orElse(
         parseProjectFile(buildPath(path, "dub.json")));
     if (!recipeOpt.isNull)
-      queue.enqueue(ProjectVersionedSubPackage(parent, ref_, path, recipeOpt.get));
+      queue.enqueue(ProjectVersionedSubPackage(parentId, parentName, ref_, path, recipeOpt.get));
   }
 }
 
 struct ProjectVersionedPackage {
   int projectId;
-  string namespace;
   VersionedPackage package_;
 }
 
 struct ProjectVersionedSubPackage {
-  string parent;
+  int parentId;
+  string parentName;
   string ref_;
   string path;
   PackageRecipe subPackage;
@@ -138,7 +134,7 @@ struct CrawlEvents {
   void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config,
       shared GitlabRegistry registry) {
     import std.array : appender, array;
-    import std.algorithm : sort, chunkBy;
+    import std.algorithm : sort, chunkBy, map;
 
     // TODO: this misses mirrored projects
     auto events = config.getEvents("pushed", after).paginate()
@@ -158,23 +154,9 @@ struct CrawlEvents {
       .chunkBy!(a => a.projectId);
 
     foreach (chunk; chunks) {
-      queue.enqueue(ProjectUpdate(chunk[0], chunk[1].array()));
+      auto next = chunk[1].map!(event => FetchVersionedPackageFile(event.projectId, event.ref_, event.commitId));
+      queue.enqueue(queue.serial(queue.parallel(next.array()), MarkProjectCrawled(chunk[0])));
     }
-  }
-}
-
-struct ProjectUpdate {
-  int projectId;
-  NewTagEvent[] tagEvents;
-  void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config,
-                      shared GitlabRegistry registry) {
-    import std.array : array;
-
-    auto project = config.getProject(projectId).content.tryMatch!((JsonContent content) => content.json());
-    auto namespace = project["path_with_namespace"].str;
-    auto events = tagEvents.map!(event => FetchVersionedPackageFile(projectId, namespace, event.ref_, event.commitId));
-
-    queue.enqueue(queue.serial(queue.parallel(events.array()), MarkProjectCrawled(projectId)));
   }
 }
 
@@ -213,7 +195,7 @@ unittest {
 }
 
 alias CrawlerWorkQueue = WorkQueue!(FindProjects, DetermineDubPackage, FetchTags, FetchVersionedPackageFile, ProjectVersionedPackage, MarkProjectCrawled,
-                                    CrawlComplete, CrawlEvents, FetchProjectSubPackage, ProjectVersionedSubPackage, ProjectUpdate);
+                                    CrawlComplete, CrawlEvents, FetchProjectSubPackage, ProjectVersionedSubPackage);
 
 alias CrawlerScheduler = Scheduler!CrawlerWorkQueue;
 
