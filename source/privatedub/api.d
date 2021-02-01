@@ -43,7 +43,7 @@ auto api(Registry[] registries) {
   return nursery;
 }
 
-alias Routes = AliasSeq!(getInfos, getDownloadUri, getPackages);
+alias Routes = AliasSeq!(getInfos, getDownloadUri, getPackages, isReadyForQueries);
 
 @(Path("/token/$token/api/packages/search"))
 @(Path("/api/packages/search"))
