@@ -106,9 +106,14 @@ void getDownloadUri(MatchedPath path, Registry[] registries, Cgi cgi) {
   auto name = path.params["name"];
   auto ver = path.params["version"];
   auto reg = registries.findRegistry(PackageName.parse(name));
-  cgi.setResponseStatus("302 Found");
-  cgi.setResponseLocation(reg.getDownloadUri(name, ver.stripExtension, path.params.getOpt("token")));
-  cgi.close();
+  auto uri = reg.getDownloadUri(name, ver.stripExtension, path.params.getOpt("token"));
+  if (uri.isNull) {
+    cgi.setResponseStatus("404 Not Found");
+  } else {
+    cgi.setResponseStatus("302 Found");
+    cgi.setResponseLocation(uri.get);
+    cgi.close();
+  }
 }
 
 @(Path("/status/readyforqueries"))

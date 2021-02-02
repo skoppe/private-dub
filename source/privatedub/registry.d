@@ -38,7 +38,7 @@ interface Registry {
   PackageMeta[] search(string name);
   PackageMeta getPackageMeta(string name);
   bool hasPackage(string name);
-  string getDownloadUri(string name, string ver_, Nullable!string token);
+  Nullable!string getDownloadUri(string name, string ver_, Nullable!string token);
   int priority();
   void sync(StopToken stopToken) shared @trusted;
   void sync(StopToken stopToken) @trusted;

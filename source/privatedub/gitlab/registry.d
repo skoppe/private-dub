@@ -133,14 +133,15 @@ public:
     }
   }
 
-  string getDownloadUri(string name, string ver_, Nullable!string token) {
+  Nullable!string getDownloadUri(string name, string ver_, Nullable!string token) {
     import std.uri : encodeComponent;
     import privatedub.util : andThen, orElse;
 
-    auto p = packages[name];
-    auto uri = config.endpoints.archive(p.projectId, "v" ~ ver_);
-    auto extra = token.andThen!(t => "&private_token="~encodeComponent(t)).orElse("");
-    return uri~extra;
+    return findPackage(name).andThen!((p) {
+        auto uri = config.endpoints.archive(p.projectId, "v" ~ ver_);
+        auto extra = token.andThen!(t => "&private_token="~encodeComponent(t)).orElse("");
+        return uri~extra;
+      });
   }
 
   private GitlabDubPackage* getPackage(int projectId, string name) {

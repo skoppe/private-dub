@@ -102,7 +102,7 @@ public:
     return exists(path);
   }
 
-  string getDownloadUri(string name, string rawVer, Nullable!string token) {
+  Nullable!string getDownloadUri(string name, string rawVer, Nullable!string token) {
     import std.algorithm : find;
     import std.range : front, empty;
     import std.format : format;
@@ -114,10 +114,9 @@ public:
     auto project = repo["project"].get!string;
     string ver = rawVer.normalizeVersion();
     if (kind == "github")
-      return "https://github.com/%s/%s/archive/%s.zip".format(owner, project, ver);
+      return typeof(return)("https://github.com/%s/%s/archive/%s.zip".format(owner, project, ver));
     else if (kind == "gitlab")
-      return "https://gitlab.com/%s/%s/-/archive/%s/%s-%s.zip".format(owner,
-          project, ver, project, ver);
+      return typeof(return)("https://gitlab.com/%s/%s/-/archive/%s/%s-%s.zip".format(owner, project, ver, project, ver));
     throw new Exception(kind ~ " is not supported");
   }
 
