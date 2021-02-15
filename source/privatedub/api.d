@@ -5,6 +5,7 @@ import privatedub.registry;
 import privatedub.resolve;
 import std.meta : AliasSeq;
 import std.typecons : Nullable;
+import sumtype;
 
 auto api(Registry[] registries) {
   import concurrency.nursery;
@@ -45,7 +46,21 @@ auto api(Registry[] registries) {
 
 alias Routes = AliasSeq!(getInfos, getDownloadUri, getPackages, isReadyForQueries);
 
+struct NullToken {
+}
+
+struct AccessToken {
+  string token;
+}
+
+struct JobToken {
+  string token;
+}
+
+alias Token = SumType!(NullToken, AccessToken, JobToken);
+
 @(Path("/token/$token/api/packages/search"))
+@(Path("/jobtoken/$jobtoken/api/packages/search"))
 @(Path("/api/packages/search"))
 void getPackages(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.algorithm : map;
@@ -73,6 +88,7 @@ void getPackages(MatchedPath path, Registry[] registries, Cgi cgi) {
 }
 
 @(Path("/token/$token/api/packages/infos"))
+@(Path("/jobtoken/$jobtoken/api/packages/search"))
 @(Path("/api/packages/infos"))
 void getInfos(MatchedPath path, Registry[] registries, Cgi cgi) {
   import dub.internal.vibecompat.data.json : Json, parseJsonString;
@@ -99,6 +115,7 @@ void getInfos(MatchedPath path, Registry[] registries, Cgi cgi) {
 }
 
 @(Path("/token/$token/packages/$name/$version"))
+@(Path("/jobtoken/$jobtoken/api/packages/search"))
 @(Path("/packages/$name/$version"))
 void getDownloadUri(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.path : stripExtension;
@@ -106,7 +123,7 @@ void getDownloadUri(MatchedPath path, Registry[] registries, Cgi cgi) {
   auto name = path.params["name"];
   auto ver = path.params["version"];
   auto reg = registries.findRegistry(PackageName.parse(name));
-  auto uri = reg.getDownloadUri(name, ver.stripExtension, path.params.getOpt("token"));
+  auto uri = reg.getDownloadUri(name, ver.stripExtension, path.params.getToken());
   if (uri.isNull) {
     cgi.setResponseStatus("404 Not Found");
   } else {
@@ -117,6 +134,7 @@ void getDownloadUri(MatchedPath path, Registry[] registries, Cgi cgi) {
 }
 
 @(Path("/status/readyforqueries"))
+@(Path("/jobtoken/$jobtoken/api/packages/search"))
 void isReadyForQueries(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.algorithm : all;
   if (registries.all!(r => r.readyForQueries()))
@@ -157,6 +175,16 @@ Nullable!string getOpt(string[string] params, string key) {
   if (auto v = key in params)
     return typeof(return)(*v);
   return typeof(return).init;
+}
+
+Token getToken(string[string] params) {
+  auto token = params.getOpt("token");
+  if (!token.isNull)
+    return Token(AccessToken(token.get));
+  auto jobtoken = params.getOpt("jobtoken");
+  if (!jobtoken.isNull)
+    return Token(JobToken(jobtoken.get));
+  return Token(NullToken());
 }
 
 struct PathRequest {

@@ -1,5 +1,6 @@
 module privatedub.gitlab.registry;
 
+import privatedub.api : Token, AccessToken, JobToken;
 import privatedub.gitlab.api;
 import privatedub.gitlab.config;
 import privatedub.work;
@@ -133,13 +134,15 @@ public:
     }
   }
 
-  Nullable!string getDownloadUri(string name, string ver_, Nullable!string token) {
+  Nullable!string getDownloadUri(string name, string ver_, Token token) {
     import std.uri : encodeComponent;
     import privatedub.util : andThen, orElse;
 
     return findPackage(name).andThen!((p) {
         auto uri = config.endpoints.archive(p.projectId, "v" ~ ver_);
-        auto extra = token.andThen!(t => "&private_token="~encodeComponent(t)).orElse("");
+        auto extra = token.match!((AccessToken t) => "&private_token="~encodeComponent(t.token),
+                                  (JobToken t) => "&job_token="~encodeComponent(t.token),
+                                  (_) => "");
         return uri~extra;
       });
   }

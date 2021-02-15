@@ -1,6 +1,7 @@
 module privatedub.dlang.registry;
 
 import privatedub.registry;
+import privatedub.api : Token;
 import concurrency.stoptoken;
 import dub.internal.vibecompat.data.json : Json, parseJsonString;
 import dub.recipe.packagerecipe : PackageRecipe, BuildSettingsTemplate;
@@ -102,7 +103,7 @@ public:
     return exists(path);
   }
 
-  Nullable!string getDownloadUri(string name, string rawVer, Nullable!string token) {
+  Nullable!string getDownloadUri(string name, string rawVer, Token token) {
     import std.algorithm : find;
     import std.range : front, empty;
     import std.format : format;

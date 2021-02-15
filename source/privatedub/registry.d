@@ -1,5 +1,6 @@
 module privatedub.registry;
 
+import privatedub.api : Token;
 import concurrency.stoptoken;
 import dub.recipe.packagerecipe;
 import dub.recipe.json;
@@ -38,7 +39,7 @@ interface Registry {
   PackageMeta[] search(string name);
   PackageMeta getPackageMeta(string name);
   bool hasPackage(string name);
-  Nullable!string getDownloadUri(string name, string ver_, Nullable!string token);
+  Nullable!string getDownloadUri(string name, string ver_, Token token);
   int priority();
   void sync(StopToken stopToken) shared @trusted;
   void sync(StopToken stopToken) @trusted;
