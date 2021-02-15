@@ -6,7 +6,7 @@ import dub.recipe.packagerecipe : PackageRecipe, BuildSettingsTemplate, Configur
 import std.typecons : Nullable;
 // import dub.recipe.json;
 import dub.internal.vibecompat.data.json : Json;
-import dsemver.semver : SemVer, parseSemVer;
+import privatedub.semver : SemVer, parseSemVer;
 
 PackageMeta[string] resolve(Registry[] registries, string name) {
   import std.array : Appender, array;
@@ -177,7 +177,7 @@ struct Version {
 }
 
 Nullable!Version parseVersion(string v) {
-  import dsemver.semver : parseSemVer;
+  import privatedub.semver : parseSemVer;
   import std.regex : ctRegex, matchFirst;
   import std.algorithm : map;
   import std.conv : to;
