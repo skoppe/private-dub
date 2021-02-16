@@ -8,5 +8,6 @@ USER private-dub
 WORKDIR /home/private-dub
 
 COPY --chown=private-dub:private-dub private-dub /home/private-dub/
+RUN chmod +x /home/private-dub/private-dub
 
 ENTRYPOINT ["./private-dub"]
