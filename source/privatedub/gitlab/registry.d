@@ -147,6 +147,11 @@ public:
       });
   }
 
+  override string toString() {
+    import std.format : format;
+    return "gitlab(hostname = %s, prefix = %s)".format(config.hostname, config.prefix);
+  }
+
   private GitlabDubPackage* getPackage(int projectId, string name) {
     return getIndex(name, projectId) in packages;
   }

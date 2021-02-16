@@ -6,8 +6,10 @@ void main() {
 	import concurrency.nursery;
 	import concurrency;
 	import std.algorithm : each;
+	import std.stdio : writeln;
 
 	auto registries = getRegistries();
+	writeln("Running with registries: ", registries);
 	shared nursery = new shared Nursery();
 
 	nursery.run(api(registries));

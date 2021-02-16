@@ -121,6 +121,10 @@ public:
     throw new Exception(kind ~ " is not supported");
   }
 
+  override string toString() {
+    return "code.dlang.org";
+  }
+
   private Json getPackage(string name) {
     import std.path : buildPath;
     import std.file : readText;
