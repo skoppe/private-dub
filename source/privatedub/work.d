@@ -137,7 +137,7 @@ struct Scheduler(Queue) {
               import std.algorithm : min;
               if (stopToken.isStopRequested)
                 break;
-              stderr.writeln("Error: ", e.message, "\nRetrying operation...");
+              stderr.writeln("Error: ", e, "\nRetrying operation...");
               Thread.sleep(dur!"msecs"(sleep));
               sleep = min(maxSleep, sleep * 2);
             }

@@ -177,9 +177,13 @@ Nullable!NewTagEvent extractNewTagEvent(JSONValue event) {
   if (push["ref_type"].str != "tag")
     return typeof(return).init;
   auto projectId = cast(int) event["project_id"].integer;
-  auto ref_ = push["ref"].str;
-  auto commitId = push["commit_to"].str;
-  return typeof(return)(NewTagEvent(projectId, ref_, commitId));
+  try {
+    auto ref_ = push["ref"].str;
+    auto commitId = push["commit_to"].str;
+    return typeof(return)(NewTagEvent(projectId, ref_, commitId));
+  } catch (Exception e) {
+    return typeof(return).init;
+  }
 }
 
 @("events.extract.NewTagEvent")

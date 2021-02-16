@@ -325,7 +325,7 @@ public:
     struct CrawlerResultNotifier {
       shared GitlabRegistry registry;
       void notify(ref ProjectVersionedPackage task) {
-        writeln(task);
+        writefln("Adding version %s (projectId=%s, name=%s)", task.package_.ref_, task.projectId, task.package_.recipe.name);
         registry.addVersionedPackage(task.projectId, task.package_);
       }
 
