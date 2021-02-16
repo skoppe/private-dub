@@ -326,6 +326,7 @@ public:
       shared GitlabRegistry registry;
       void notify(ref ProjectVersionedPackage task) {
         writefln("Adding version %s (projectId=%s, name=%s)", task.package_.ref_, task.projectId, task.package_.recipe.name);
+        stdout.flush();
         registry.addVersionedPackage(task.projectId, task.package_);
       }
 
@@ -339,7 +340,8 @@ public:
       }
 
       void notify(ref ProjectVersionedSubPackage task) {
-        writeln(task);
+        writefln("Adding version %s (projectId=%s, name=%s)", task.ref_, task.parentId, task.subPackage.name);
+        stdout.flush();
         registry.addVersionedSubPackage(task.parentId, task.parentName, task.ref_, task.path, task.subPackage);
       }
     }
@@ -361,21 +363,28 @@ public:
         .get), CrawlComplete()));
     if (!crawler.drain(stopToken, CrawlerResultNotifier(this), cast()config, this))
       writeln(config.hostname, ": syncing cancelled.");
+    stdout.flush();
   }
 
   private bool loadFromMirror() shared {
     import requests;
     import std.path : buildPath;
     import privatedub.zip;
+    import std.conv : to;
 
     if (config.mirror == "")
       return false;
 
+    import std.stdio;
+    writeln("Loading gitlab registry "~config.hostname~" from mirror "~config.mirror);
+    stdout.flush();
     try {
       auto rq = Request();
       if (config.interceptor)
         rq.addInterceptor(cast()config.interceptor);
       auto response = rq.get(buildPath(config.mirror, "token", config.token, "mirror", config.prefix));
+      if (response.code < 200 || response.code > 300)
+        throw new Exception("Got status "~response.code.to!string);
       auto archive = new ZipArchive(response.responseBody.data);
       with(lock) {
         unzipFolder(packagesPath, archive);
@@ -384,6 +393,7 @@ public:
     } catch (Exception e) {
       import std.stdio;
       stderr.writeln("Failed to sync from mirror: ", e);
+      stderr.flush();
       return false;
     }
   }
