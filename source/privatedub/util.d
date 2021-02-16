@@ -2,12 +2,22 @@ module privatedub.util;
 
 import std.typecons : Nullable;
 
+struct Unit {}
+
 template andThen(alias fun) {
   auto andThen(T)(Nullable!T t) {
     alias RT = typeof(fun(T.init));
     static if (is(RT == void)) {
-      if (!t.isNull)
+      if (!t.isNull) {
         fun(t.get);
+        return Nullable!Unit(Unit());
+      }
+      return Nullable!Unit.init;
+    } else static if (is(RT == Nullable!P, P)){
+      alias Result = RT;
+      if (t.isNull)
+        return Result.init;
+      return fun(t.get);
     } else {
       alias Result = Nullable!(RT);
       if (t.isNull)
@@ -25,6 +35,20 @@ unittest {
   Nullable!int i;
   i.andThen!(i => i * 2).shouldEqual(Nullable!int.init);
   Nullable!int(4).andThen!(i => i * 2).shouldEqual(Nullable!int(8));
+}
+
+template orElse(alias fun) {
+  auto orElse(T)(Nullable!T base) {
+    if (base.isNull) {
+      alias RT = typeof(fun());
+      static if (is(RT == void)) {
+        fun();
+        return Unit();
+      } else
+        return fun();
+    }
+    return base;
+  }
 }
 
 auto orElse(T : Nullable!P, P, L)(T base, lazy L orElse) {
