@@ -137,6 +137,18 @@ struct PackageName {
   }
 }
 
+Nullable!Registry findRegistry(Registry[] registries, string prefix) {
+  import std.algorithm : filter, startsWith, find;
+  import std.range : empty, front;
+
+  auto byPrefix = registries.filter!(r => r.getPrefix().length > 0)
+    .find!(reg => prefix == reg.getPrefix()[0..$-1]);
+  if (!byPrefix.empty)
+    return typeof(return)(byPrefix.front);
+
+  return typeof(return).init;
+}
+
 Nullable!Registry findRegistry(Registry[] registries, PackageName p) {
   import std.algorithm : filter, startsWith, find;
   import std.range : empty, front;

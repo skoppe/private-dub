@@ -6,6 +6,7 @@ import dub.recipe.packagerecipe;
 import dub.recipe.json;
 import dub.internal.vibecompat.data.json;
 import std.typecons : Nullable;
+import std.zip : ZipArchive;
 
 struct VersionedPackage {
   string ref_;
@@ -44,6 +45,8 @@ interface Registry {
   void sync(StopToken stopToken) shared @trusted;
   void sync(StopToken stopToken) @trusted;
   bool readyForQueries();
+  ZipArchive mirror();
+  bool validateToken(Token token);
 }
 
 @("Ensure we can use slash in name and dependency")

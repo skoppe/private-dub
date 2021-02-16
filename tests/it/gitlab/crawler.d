@@ -38,7 +38,7 @@ unittest {
     }
   }
 
-  auto gitlabConfig = GitlabConfig("abcd","git.example.com","./tmp/storage",1,"test.", new MockInterceptor());
+  auto gitlabConfig = GitlabConfig("abcd","git.example.com","./tmp/storage",1,"test.", "", new MockInterceptor());
   CrawlerWorkQueue queue;
   auto registry = cast(shared) new GitlabRegistry(gitlabConfig);
 

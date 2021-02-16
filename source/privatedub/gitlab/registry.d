@@ -14,6 +14,7 @@ import dub.recipe.packagerecipe;
 import std.datetime.date : Date;
 import dub.internal.vibecompat.data.json : Json, parseJsonString;
 import std.typecons : Nullable;
+import std.zip : ZipArchive;
 
 struct GitlabDubPackage {
   int projectId;
@@ -52,6 +53,12 @@ private:
     import privatedub.sync : Guard;
 
     return Guard!(GitlabRegistry).acquire(this, cast() this.mutex);
+  }
+
+  auto lock() {
+    import privatedub.sync : Guard;
+
+    return Guard!(GitlabRegistry).acquire(cast(shared)this, this.mutex);
   }
 
   string getIndex(string name, int projectId) {
@@ -145,6 +152,24 @@ public:
                                   (_) => "");
         return uri~extra;
       });
+  }
+
+  ZipArchive mirror() {
+    import privatedub.zip;
+    if (!readyForQueries())
+      return null;
+
+    with (lock()) {
+      return zipFolder(packagesPath);
+    }
+  }
+
+  bool validateToken(Token token) {
+    return token.match!((AccessToken t){
+        return config.getVersion(t).isOk();
+      }, (JobToken t){
+        return true;
+      }, (_) => false);
   }
 
   override string toString() {
@@ -321,11 +346,13 @@ public:
 
     CrawlerScheduler crawler;
     if ((cast() lastCrawl).isNull) {
-      writeln(config.hostname, ": syncing metadata, this may take a few minutes.");
-      crawler.queue.enqueue(crawler.queue.serial(FindProjects(), CrawlComplete()));
-      if (!crawler.drain(stopToken, CrawlerResultNotifier(this), cast()config, this)) {
-        writeln(config.hostname, ": syncing cancelled.");
-        return;
+      if (!loadFromMirror()) {
+        writeln(config.hostname, ": syncing metadata, this may take a few minutes.");
+        crawler.queue.enqueue(crawler.queue.serial(FindProjects(), CrawlComplete()));
+        if (!crawler.drain(stopToken, CrawlerResultNotifier(this), cast()config, this)) {
+          writeln(config.hostname, ": syncing cancelled.");
+          return;
+        }
       }
       writeln(config.hostname, ": syncing done.");
     }
@@ -334,6 +361,31 @@ public:
         .get), CrawlComplete()));
     if (!crawler.drain(stopToken, CrawlerResultNotifier(this), cast()config, this))
       writeln(config.hostname, ": syncing cancelled.");
+  }
+
+  private bool loadFromMirror() shared {
+    import requests;
+    import std.path : buildPath;
+    import privatedub.zip;
+
+    if (config.mirror == "")
+      return false;
+
+    try {
+      auto rq = Request();
+      if (config.interceptor)
+        rq.addInterceptor(cast()config.interceptor);
+      auto response = rq.get(buildPath(config.mirror, "token", config.token, "mirror", config.prefix));
+      auto archive = new ZipArchive(response.responseBody.data);
+      with(lock) {
+        unzipFolder(packagesPath, archive);
+      }
+      return true;
+    } catch (Exception e) {
+      import std.stdio;
+      stderr.writeln("Failed to sync from mirror: ", e);
+      return false;
+    }
   }
 }
 

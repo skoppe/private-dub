@@ -6,6 +6,7 @@ import concurrency.stoptoken;
 import dub.internal.vibecompat.data.json : Json, parseJsonString;
 import dub.recipe.packagerecipe : PackageRecipe, BuildSettingsTemplate;
 import std.typecons : Nullable;
+import std.zip : ZipArchive;
 
 import dub.recipe.json : parseJson;
 
@@ -119,6 +120,14 @@ public:
     else if (kind == "gitlab")
       return typeof(return)("https://gitlab.com/%s/%s/-/archive/%s/%s-%s.zip".format(owner, project, ver, project, ver));
     throw new Exception(kind ~ " is not supported");
+  }
+
+  ZipArchive mirror() {
+    return null;
+  }
+
+  bool validateToken(Token token) {
+    return true;
   }
 
   override string toString() {

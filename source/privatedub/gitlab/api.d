@@ -4,18 +4,20 @@ import std.json;
 import sumtype;
 import std.datetime.date : Date;
 import privatedub.gitlab.config;
+import privatedub.api;
 
 Endpoints endpoints(GitlabConfig config) {
   return Endpoints(config.baseUrl);
 }
 
-auto makeRequest(GitlabConfig config) {
+auto makeRequest(GitlabConfig config, bool setToken = true) {
   import requests;
 
   auto rq = Request();
   if (config.interceptor)
     rq.addInterceptor(cast()config.interceptor);
-  rq.addHeaders(["PRIVATE-TOKEN": config.token]);
+  if (setToken)
+    rq.addHeaders(["PRIVATE-TOKEN": config.token]);
   return rq;
 }
 
@@ -60,6 +62,10 @@ struct Endpoints {
     import std.conv : to;
 
     return buildPath(projects(), projectId.to!string, "repository/archive.zip?sha="~ref_);
+  }
+
+  string version_() {
+    return buildPath(host, "version");
   }
 }
 
@@ -221,6 +227,12 @@ GitlabResponse getProjectFileMeta(GitlabConfig config, int id, string filepath, 
 GitlabResponse getEvents(GitlabConfig config, string action, Date after) {
   return GitlabResponse(config.makeRequest().execute("GET",
       config.endpoints.events(action, after)), config);
+}
+
+/// We misuse the version api to validate AccessTokens
+GitlabResponse getVersion(GitlabConfig config, AccessToken token) {
+  return GitlabResponse(config.makeRequest(false).execute("GET",
+      config.endpoints.version_() ~ "?private_token="~token.token), config);
 }
 
 struct PaginatedGitlabResponse {

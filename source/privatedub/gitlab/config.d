@@ -11,6 +11,7 @@ struct GitlabConfig {
   string storage = "./storage";
   int priority = 2;
   string prefix;
+  string mirror;
   Interceptor interceptor = null;
 
   string baseUrl() const {
@@ -26,6 +27,7 @@ struct GitlabConfig {
                         parts[1],
                         section.getKey("storage", GitlabConfig.init.storage),
                         section.getKey("priority", GitlabConfig.init.priority.to!string).to!int,
-                        section.getKey("prefix", parts[1]));
+                        section.getKey("prefix", parts[1]),
+                        section.getKey("mirror", ""));
   }
 }
