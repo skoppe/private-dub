@@ -252,7 +252,7 @@ struct PaginatedGitlabResponse {
   }
 
   void popFront() {
-    head = head.next();
+    head = head.get.next();
   }
 }
 

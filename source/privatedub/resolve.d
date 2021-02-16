@@ -209,8 +209,8 @@ auto highestVersion(VersionedPackage[] ps) {
 
   return ps.map!(p => parseVersion(p.ref_).andThen!(v => tuple!("orderable","ref_")(v,p.ref_)))
     .filter!(t => !t.isNull)
-    .maxElement!(t => t.orderable)
-    .ref_;
+    .maxElement!(t => t.get.orderable)
+    .get.ref_;
 }
 
 auto highestReleaseVersion(VersionedPackage[] ps) {
@@ -221,8 +221,8 @@ auto highestReleaseVersion(VersionedPackage[] ps) {
   return ps.filter!(p => p.ref_.isReleaseVersion)
     .map!(p => parseVersion(p.ref_).andThen!(v => tuple!("orderable","ref_")(v,p.ref_)))
     .filter!(t => !t.isNull)
-    .maxElement!(t => t.orderable)
-    .ref_;
+    .maxElement!(t => t.get.orderable)
+    .get.ref_;
 }
 
 unittest {

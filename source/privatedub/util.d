@@ -47,7 +47,7 @@ template orElse(alias fun) {
       } else
         return fun();
     }
-    return base;
+    return base.get();
   }
 }
 

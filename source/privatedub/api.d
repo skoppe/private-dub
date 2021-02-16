@@ -3,6 +3,7 @@ module privatedub.api;
 import privatedub.server;
 import privatedub.registry;
 import privatedub.resolve;
+import privatedub.util;
 import std.meta : AliasSeq;
 import std.typecons : Nullable;
 import sumtype;
@@ -75,7 +76,7 @@ void getPackages(MatchedPath path, Registry[] registries, Cgi cgi) {
     if (reg.isNull) {
       cgi.write(`[]`);
     } else {
-      auto results = reg.search(q);
+      auto results = reg.get().search(q);
       auto sr = results.map!(result => SearchResult(result.name, null, result.versions.highestVersion().stripLeft("v")));
       cgi.write(sr.serializeToJson());
     }
@@ -122,15 +123,14 @@ void getDownloadUri(MatchedPath path, Registry[] registries, Cgi cgi) {
 
   auto name = path.params["name"];
   auto ver = path.params["version"];
-  auto reg = registries.findRegistry(PackageName.parse(name));
-  auto uri = reg.getDownloadUri(name, ver.stripExtension, path.params.getToken());
-  if (uri.isNull) {
-    cgi.setResponseStatus("404 Not Found");
-  } else {
-    cgi.setResponseStatus("302 Found");
-    cgi.setResponseLocation(uri.get);
-    cgi.close();
-  }
+  auto reg = registries.findRegistry(PackageName.parse(name))
+    .andThen!((reg) => reg.getDownloadUri(name, ver.stripExtension, path.params.getToken()))
+    .andThen!((uri){
+        cgi.setResponseStatus("302 Found");
+        cgi.setResponseLocation(uri);
+        cgi.close();
+      })
+    .orElse!(() => cgi.setResponseStatus("404 Not Found"));
 }
 
 @(Path("/status/readyforqueries"))
@@ -145,7 +145,6 @@ void isReadyForQueries(MatchedPath path, Registry[] registries, Cgi cgi) {
 
 @(Path("/token/$token/mirror/$registry"))
 void mirror(MatchedPath path, Registry[] registries, Cgi cgi) {
-  import privatedub.util;
   import std.algorithm : all;
 
   auto r = path.params
