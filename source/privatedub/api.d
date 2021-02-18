@@ -89,7 +89,7 @@ void getPackages(MatchedPath path, Registry[] registries, Cgi cgi) {
 }
 
 @(Path("/token/$token/api/packages/infos"))
-@(Path("/jobtoken/$jobtoken/api/packages/search"))
+@(Path("/jobtoken/$jobtoken/api/packages/infos"))
 @(Path("/api/packages/infos"))
 void getInfos(MatchedPath path, Registry[] registries, Cgi cgi) {
   import dub.internal.vibecompat.data.json : Json, parseJsonString;
@@ -116,7 +116,7 @@ void getInfos(MatchedPath path, Registry[] registries, Cgi cgi) {
 }
 
 @(Path("/token/$token/packages/$name/$version"))
-@(Path("/jobtoken/$jobtoken/api/packages/search"))
+@(Path("/jobtoken/$jobtoken/packages/$name/$version"))
 @(Path("/packages/$name/$version"))
 void getDownloadUri(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.path : stripExtension;
@@ -134,7 +134,7 @@ void getDownloadUri(MatchedPath path, Registry[] registries, Cgi cgi) {
 }
 
 @(Path("/status/readyforqueries"))
-@(Path("/jobtoken/$jobtoken/api/packages/search"))
+@(Path("/jobtoken/$jobtoken/status/readyforqueries"))
 void isReadyForQueries(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.algorithm : all;
   if (registries.all!(r => r.readyForQueries()))
