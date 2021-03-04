@@ -54,14 +54,14 @@ struct AccessToken {
   string token;
 }
 
-struct JobToken {
+struct OAuthToken {
   string token;
 }
 
-alias Token = SumType!(NullToken, AccessToken, JobToken);
+alias Token = SumType!(NullToken, AccessToken, OAuthToken);
 
 @(Path("/token/$token/api/packages/search"))
-@(Path("/jobtoken/$jobtoken/api/packages/search"))
+@(Path("/oauthtoken/$oauthtoken/api/packages/search"))
 @(Path("/api/packages/search"))
 void getPackages(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.algorithm : map;
@@ -89,7 +89,7 @@ void getPackages(MatchedPath path, Registry[] registries, Cgi cgi) {
 }
 
 @(Path("/token/$token/api/packages/infos"))
-@(Path("/jobtoken/$jobtoken/api/packages/infos"))
+@(Path("/oauthtoken/$oauthtoken/api/packages/infos"))
 @(Path("/api/packages/infos"))
 void getInfos(MatchedPath path, Registry[] registries, Cgi cgi) {
   import dub.internal.vibecompat.data.json : Json, parseJsonString;
@@ -116,7 +116,7 @@ void getInfos(MatchedPath path, Registry[] registries, Cgi cgi) {
 }
 
 @(Path("/token/$token/packages/$name/$version"))
-@(Path("/jobtoken/$jobtoken/packages/$name/$version"))
+@(Path("/oauthtoken/$oauthtoken/packages/$name/$version"))
 @(Path("/packages/$name/$version"))
 void getDownloadUri(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.path : stripExtension;
@@ -134,7 +134,7 @@ void getDownloadUri(MatchedPath path, Registry[] registries, Cgi cgi) {
 }
 
 @(Path("/status/readyforqueries"))
-@(Path("/jobtoken/$jobtoken/status/readyforqueries"))
+@(Path("/oauthtoken/$oauthtoken/status/readyforqueries"))
 void isReadyForQueries(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.algorithm : all;
   if (registries.all!(r => r.readyForQueries()))
@@ -210,9 +210,9 @@ Token getToken(string[string] params) {
   auto token = params.getOpt("token");
   if (!token.isNull)
     return Token(AccessToken(token.get));
-  auto jobtoken = params.getOpt("jobtoken");
-  if (!jobtoken.isNull)
-    return Token(JobToken(jobtoken.get));
+  auto oauthtoken = params.getOpt("oauthtoken");
+  if (!oauthtoken.isNull)
+    return Token(OAuthToken(oauthtoken.get));
   return Token(NullToken());
 }
 

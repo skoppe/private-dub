@@ -1,6 +1,6 @@
 module privatedub.gitlab.registry;
 
-import privatedub.api : Token, AccessToken, JobToken;
+import privatedub.api : Token, AccessToken, OAuthToken;
 import privatedub.gitlab.api;
 import privatedub.gitlab.config;
 import privatedub.work;
@@ -148,7 +148,7 @@ public:
     return findPackage(name).andThen!((p) {
         auto uri = config.endpoints.archive(p.projectId, "v" ~ ver_);
         auto extra = token.match!((AccessToken t) => "&private_token="~encodeComponent(t.token),
-                                  (JobToken t) => "&job_token="~encodeComponent(t.token),
+                                  (OAuthToken t) => "&oauth_token="~encodeComponent(t.token),
                                   (_) => "");
         return uri~extra;
       });
@@ -167,7 +167,7 @@ public:
   bool validateToken(Token token) {
     return token.match!((AccessToken t){
         return config.getVersion(t).isOk();
-      }, (JobToken t){
+      }, (OAuthToken t){
         return true;
       }, (_) => false);
   }
