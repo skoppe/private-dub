@@ -259,7 +259,7 @@ public:
         clearRegistry();
         return;
       }
-      lastCrawl = Nullable!Date(Date.fromISOExtString(readText(lastCrawlFile)));
+      loadLastCrawl();
     }
     catch (Exception e) {
       clearRegistry();
@@ -275,6 +275,11 @@ public:
         stderr.writeln("Duplicate package with name '"~p.name~"' on disk, skipping. Duplicate entry is '"~ name ~"'. Please remove file manually.");
       }
     }
+  }
+
+  private void loadLastCrawl() {
+    import std.file : readText;
+    lastCrawl = Nullable!Date(Date.fromISOExtString(readText(lastCrawlFile)));
   }
 
   private void clearRegistry() {
@@ -388,6 +393,7 @@ public:
       auto archive = new ZipArchive(response.responseBody.data);
       with(lock) {
         unzipFolder(packagesPath, archive);
+        loadLastCrawl();
       }
       return true;
     } catch (Exception e) {
