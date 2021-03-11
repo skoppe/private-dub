@@ -393,7 +393,7 @@ public:
       auto archive = new ZipArchive(response.responseBody.data);
       with(lock) {
         unzipFolder(packagesPath, archive);
-        loadLastCrawl();
+        loadRegistry();
       }
       return true;
     } catch (Exception e) {
