@@ -7,12 +7,12 @@ import std.typecons : Nullable;
 // import dub.recipe.json;
 import dub.internal.vibecompat.data.json : Json;
 import privatedub.semver : SemVer, parseSemVer;
+import privatedub.util : andThen, orElse, filter, firstOpt;
 
 PackageMeta[string] resolve(Registry[] registries, string name) {
   import std.array : Appender, array;
   import std.algorithm : joiner, sort, uniq, each, filter, find, map;
   import std.range : chain;
-  import privatedub.util : andThen;
 
   PackageMeta[string] packages;
 
@@ -138,31 +138,73 @@ struct PackageName {
 }
 
 Nullable!Registry findRegistry(Registry[] registries, string prefix) {
-  import std.algorithm : filter, startsWith, find;
-  import std.range : empty, front;
+  import std.algorithm : find;
+  import std.string : stripRight;
 
-  auto byPrefix = registries.filter!(r => r.getPrefix().length > 0)
-    .find!(reg => prefix == reg.getPrefix()[0..$-1]);
-  if (!byPrefix.empty)
-    return typeof(return)(byPrefix.front);
+  return registries.find!(reg => prefix == reg.getPrefix().stripRight(".")).firstOpt;
+}
 
-  return typeof(return).init;
+@("findRegistry.prefix")
+unittest {
+  import unit_threaded;
+  import std.typecons : WhiteHole;
+  alias WhiteHoleRegistry = WhiteHole!Registry;
+  class PrefixRegistry : WhiteHoleRegistry {
+    override string getPrefix() { return "prefix."; }
+  }
+  class NoPrefixRegistry : WhiteHoleRegistry {
+    override string getPrefix() { return ""; }
+  }
+  Registry[] regs = [new PrefixRegistry(), new NoPrefixRegistry()];
+  auto a = regs.findRegistry("");
+  a.isNull.should == false;
+  a.get.getPrefix().should == "";
+  auto b = regs.findRegistry("prefix");
+  b.isNull.should == false;
+  b.get.getPrefix().should == "prefix.";
+  auto c = regs.findRegistry("noexist");
+  c.isNull.should == true;
 }
 
 Nullable!Registry findRegistry(Registry[] registries, PackageName p) {
-  import std.algorithm : filter, startsWith, find;
   import std.range : empty, front;
+  import std.array : split;
 
-  auto byPrefix = registries.filter!(r => r.getPrefix().length > 0)
-    .find!(reg => p.base.startsWith(reg.getPrefix()));
-  if (!byPrefix.empty)
-    return typeof(return)(byPrefix.front);
+  auto parts = p.base.split(".");
 
-  auto byName = registries.find!(reg => reg.hasPackage(p.base));
-  if (!byName.empty)
-    return typeof(return)(byName.front);
+  if (parts.length > 1) {
+    return findRegistry(registries, parts[0]).filter!(r => r.hasPackage(p.base));
+  }
 
-  return typeof(return).init;
+  import std.algorithm : find, filter;
+  return registries.filter!(r => r.getPrefix().length == 0).find!(reg => reg.hasPackage(p.base)).firstOpt;
+}
+
+@("findRegistry.packageName")
+unittest {
+  import unit_threaded;
+  import std.typecons : WhiteHole;
+  alias WhiteHoleRegistry = WhiteHole!Registry;
+  class PrefixRegistry : WhiteHoleRegistry {
+    override string getPrefix() { return "prefix."; }
+    override bool hasPackage(string name) { return name == "prefix.prefixed-package"; }
+  }
+  class NoPrefixRegistry : WhiteHoleRegistry {
+    override string getPrefix() { return ""; }
+    override bool hasPackage(string name) { return name == "unprefixed-package"; }
+  }
+  Registry[] regs = [new PrefixRegistry(), new NoPrefixRegistry()];
+
+  auto a = regs.findRegistry(PackageName("unprefixed-package"));
+  a.isNull.should == false;
+  a.get.getPrefix().should == "";
+  regs.findRegistry(PackageName("prefixed-package")).isNull.should == true;
+
+  auto b = regs.findRegistry(PackageName("prefix.prefixed-package"));
+  b.isNull.should == false;
+  b.get.getPrefix().should == "prefix.";
+  regs.findRegistry(PackageName("prefix.unprefixed-package")).isNull.should == true;
+
 }
 
 auto getDependencies(ref BuildSettingsTemplate bst) {

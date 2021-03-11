@@ -65,3 +65,19 @@ unittest {
   a.orElse(b).get.shouldEqual(5);
   Nullable!int.init.orElse(b).get.shouldEqual(4);
 }
+
+template filter(alias fun) {
+  auto filter(T)(Nullable!T base) {
+    if (base.isNull || fun(base.get))
+      return base;
+    return Nullable!T.init;
+  }
+}
+
+auto firstOpt(Range)(Range r) {
+  import std.range : ElementType, empty, front;
+  alias T = ElementType!Range;
+  if (r.empty)
+    return Nullable!T.init;
+  return Nullable!T(r.front);
+}
