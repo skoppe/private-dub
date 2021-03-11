@@ -8,9 +8,7 @@ Tired of workarounds with submodules or git trees?
 
 # Run a registry yourself
 
-Just point it to your VCS, put a `dub.json`/`dub.sdl` in a repository and tag a commit.
-
-No need to publish anything. Projects and versions are discovered automatically.
+Just point it to your VCS. No need to publish anything. Projects and versions are discovered automatically.
 
 Tell dub about your registry and be happy ever after. `dub build --registry=https://gitlab.example.com`.
 
@@ -24,11 +22,11 @@ Better yet, put the following in `~/.dub/settings.json` or `/%APPDATA%\dub\setti
 
 > NOTE: Look in the official dub documentation for other places where this file can be located.
 
-## code.dlang.org
+## Requirements for packages
 
-Yes, it will also resolve packages from [code.dlang.org](https://code.dlang.org).
+1) The `dub.sdl|.json` needs to be in the root folder of the repository.
 
-To avoid name clashes you should prefix your packages, like so:
+2) The package name needs to be prefixed, by default the `<hostname>` from the `config.ini` is taken, but it is advised to explicitly set the prefix yourself.
 
 ```sdl
 name "gitlab.example.com.my-project"
@@ -36,11 +34,15 @@ dependency "gitlab.example.com.another-project" version="~>1.2.3"
 dependency "vibe-d" version="~>3.4.5"
 ```
 
-The default prefix is your `<hostname>.` but it can be configured in the config. Make a concious choice here, it is hard to change later.
+The prefixing is necessary to avoid having public packages shadow private package, or vice versa.
 
-Prefixing is not required however.
+3) The repository needs a tag in the form of `v1.2.3` with optional release candidates or build information. Just like with dub.
 
 > NOTE: Even though the documentation on [code.dlang.org](https://code.dlang.org) states that only alphanumerics and '-' are allowed, since there is no enforcement, we decided to take this approach.
+
+## code.dlang.org
+
+Yes, it will also resolve packages from [code.dlang.org](https://code.dlang.org).
 
 # Running your own
 
