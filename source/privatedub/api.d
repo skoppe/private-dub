@@ -70,13 +70,14 @@ void getPackages(MatchedPath path, Registry[] registries, Cgi cgi) {
 
   try {
     string q = path.query["q"];
-    auto reg = registries.findRegistry(PackageName.parse(q));
+    auto package_ = PackageName.parse(q);
+    auto reg = registries.findRegistry(package_);
     cgi.setResponseContentType("application/json");
     cgi.setResponseStatus("200 Ok");
     if (reg.isNull) {
       cgi.write(`[]`);
     } else {
-      auto results = reg.get().search(q);
+      auto results = reg.get().search(package_.base);
       auto sr = results.map!(result => SearchResult(result.name, null, result.versions.highestVersion().stripLeft("v")));
       cgi.write(sr.serializeToJson());
     }
