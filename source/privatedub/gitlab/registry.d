@@ -148,7 +148,7 @@ public:
     return findPackage(name).andThen!((p) {
         auto uri = config.endpoints.archive(p.projectId, "v" ~ ver_);
         auto extra = token.match!((AccessToken t) => "&private_token="~encodeComponent(t.token),
-                                  (OAuthToken t) => "&oauth_token="~encodeComponent(t.token),
+                                  (OAuthToken t) => "&access_token="~encodeComponent(t.token),
                                   (_) => "");
         return uri~extra;
       });
