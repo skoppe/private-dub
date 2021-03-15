@@ -46,7 +46,7 @@ private:
   GitlabDubPackage[string] packages;
   GitlabConfig config;
   string packagesPath;
-  enum string storageVersion = "2"; // increment when we modify the stuff we save to disk, it will trigger a recrawl
+  enum string storageVersion = "3"; // increment when we modify the stuff we save to disk, it will trigger a recrawl
   Mutex mutex;
   Nullable!Date lastCrawl;
   auto lock() shared {
@@ -376,6 +376,7 @@ public:
     import std.path : buildPath;
     import privatedub.zip;
     import std.conv : to;
+    import std.file : readText;
 
     if (config.mirror == "")
       return false;
@@ -393,6 +394,12 @@ public:
       auto archive = new ZipArchive(response.responseBody.data);
       with(lock) {
         unzipFolder(packagesPath, archive);
+        string ver = readText(versionFile);
+        if (ver != storageVersion) {
+          writeln(config.hostname, ": cache format changed, need to re-sync");
+          clearRegistry();
+          return false;
+        }
         loadRegistry();
       }
       return true;
