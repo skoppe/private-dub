@@ -208,6 +208,7 @@ Nullable!PackageRecipe parseProjectFile(GitlabConfig config,
   import std.base64;
   import std.exception : enforce;
   import dub.recipe.io;
+  import std.stdio : stderr;
 
   auto packageFile = config.getProjectFile(projectId, filename, ref_);
   if (!packageFile.isOk)
@@ -215,8 +216,15 @@ Nullable!PackageRecipe parseProjectFile(GitlabConfig config,
 
   auto json = packageFile.content.tryMatch!((JsonContent content) => content.json);
   enforce(json["encoding"].str == "base64", "can only decode base64 encodings");
+
   auto content = (cast(string) Base64.decode(json["content"].str)).removeBOM;
-  return typeof(return)(parsePackageRecipe(content, filename));
+  try {
+    return typeof(return)(parsePackageRecipe(content, filename));
+  } catch (Exception e) {
+    stderr.writefln("Skipping package file from %d @ %s: %s", projectId, ref_, e.message);
+    stderr.flush();
+    return typeof(return).init;
+  }
 }
 
 string removeBOM(string content) {
