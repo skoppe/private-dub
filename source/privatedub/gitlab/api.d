@@ -37,6 +37,9 @@ struct Endpoints {
 
   string files(int projectId, string filePath, string ref_) {
     import std.conv : to;
+    import std.algorithm : skipOver;
+
+    filePath.skipOver("./");
 
     return buildPath(projects(), projectId.to!string, "repository/files",
         encodeComponent(filePath) ~ "?ref=" ~ ref_);

@@ -227,6 +227,21 @@ Nullable!PackageRecipe parseProjectFile(GitlabConfig config,
   }
 }
 
+@("parsePackageRecipe")
+unittest {
+  import unit_threaded;
+  import dub.recipe.io;
+
+  enum dubsdl = `name "foobar"
+dependency "foobar:fx" version="*"
+subPackage "./fx/"
+targetType "library"
+`;
+  auto recipe = parsePackageRecipe(dubsdl, "dub.sdl");
+  recipe.subPackages.length.should == 1;
+  recipe.subPackages[0].path.should == "./fx/";
+}
+
 string removeBOM(string content) {
   import std.encoding : getBOM, bomTable, BOM;
 

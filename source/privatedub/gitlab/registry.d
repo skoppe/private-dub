@@ -422,3 +422,35 @@ Date yesterday() {
 
   return Date().fromISOExtString(Clock.currTime().roll!"days"(-1).toISOExtString()[0 .. 10]);
 }
+
+unittest {
+  import unit_threaded;
+  auto gitlabConfig = GitlabConfig("abcd","git.example.com","./tmp/storage",1,"test.", "");
+  auto registry = cast(shared) new GitlabRegistry(gitlabConfig);
+
+  import privatedub.resolve;
+  import dub.recipe.io;
+
+  enum rootSdl = `name "foo.bar"
+dependency "foo.bar:fx" version="*"
+subPackage "./fx/"
+targetType "library"
+`;
+
+  enum subSdl = `name "fx"
+description "fx library"
+copyright "Copyright © 2021, foobar"
+authors "foobar"
+`;
+
+  auto rootPackage = VersionedPackage("v0.0.1", "commit", parsePackageRecipe(rootSdl, "dub.sdl"));
+  registry.addVersionedPackage(55, rootPackage);
+  registry.addVersionedSubPackage(55, "foo.bar", "v0.0.1", "./fx/", parsePackageRecipe(subSdl, "dub.sdl"));
+
+  auto pkg = registry.lock().findPackage("foo.bar");
+  pkg.toJson().toString.should == `{"projectId":55,"versions":[{"version":"v0.0.1","recipe":{"subPackages":[{"description":"fx library","authors":["foobar"],"copyright":"Copyright © 2021, foobar","name":"fx"}],"dependencies":{"foo.bar:fx":">=0.0.0"},"targetType":"library","name":"foo.bar"},"commitId":"commit"}],"name":"foo.bar"}`;
+  pkg.projectId.should == 55;
+  pkg.name.should == "foo.bar";
+  pkg.versions.length.should == 1;
+  pkg.versions[0].recipe.toPackageDependencyInfo().toString.should == `{"subPackages":[{"dependencies":{},"configurations":[],"name":"fx"}],"dependencies":{"foo.bar:fx":">=0.0.0"},"configurations":[],"name":"foo.bar"}`;
+}
