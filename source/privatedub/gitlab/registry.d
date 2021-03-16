@@ -172,6 +172,11 @@ public:
       }, (_) => false);
   }
 
+  void validate() {
+    import std.exception;
+    enforce(validateToken(Token(AccessToken(config.token))), "invalid token in configuration for hostname = "~config.hostname);
+  }
+
   override string toString() {
     import std.format : format;
     return "gitlab(hostname = %s, prefix = %s)".format(config.hostname, config.prefix);

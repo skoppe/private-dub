@@ -79,6 +79,8 @@ public:
     return "";
   }
 
+  void validate() {}
+
   PackageMeta[] search(string name) {
     // note we don't actually search, just match a single package and return if found
     return [getPackageMeta(name)];

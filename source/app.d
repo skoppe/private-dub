@@ -9,6 +9,7 @@ void main() {
 	import std.stdio : writeln;
 
 	auto registries = getRegistries();
+	registries.each!(r => r.validate());
 	writeln("Running with registries: ", registries);
 	shared nursery = new shared Nursery();
 
