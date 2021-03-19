@@ -45,7 +45,7 @@ auto api(Registry[] registries) {
   return nursery;
 }
 
-alias Routes = AliasSeq!(getInfos, getDownloadUri, getPackages, isReadyForQueries, mirror);
+alias Routes = AliasSeq!(getInfos, getDownloadUri, getPackages, isReadyForQueries, mirror, packages);
 
 struct NullToken {
 }
@@ -166,6 +166,40 @@ void mirror(MatchedPath path, Registry[] registries, Cgi cgi) {
           cgi.header("Content-Type: application/zip");
           cgi.header(`Content-Disposition: attachment; filename="mirror.zip"`);
           cgi.write(archive.build);
+        }
+      })
+    .orElse!((){
+        cgi.setResponseStatus("404 Not Found");
+      });
+}
+
+@(Path("/oauthtoken/$oauthtoken/packages/$registry"))
+@(Path("/token/$token/packages/$registry"))
+void packages(MatchedPath path, Registry[] registries, Cgi cgi) {
+  import std.algorithm : all, map;
+  import std.array : array;
+  import dub.internal.vibecompat.data.json : Json;
+  import privatedub.gitlab.registry : GitlabRegistry;
+
+  auto r = path.params
+    .getOpt("registry")
+    .andThen!(name => findRegistry(registries, name))
+    .andThen!((registry) {
+        auto token = path.params.getToken;
+        auto isAccessToken = token.match!((AccessToken t) => true, (_) => false);
+        if (!isAccessToken || !registry.validateToken(path.params.getToken)) {
+          cgi.setResponseStatus("403 Forbidden");
+        } else if (auto gitlab = cast(GitlabRegistry)registry){
+          if (!gitlab.readyForQueries) {
+            cgi.setResponseStatus("503 Service Unavailable");
+          }
+          cgi.setResponseContentType("application/json");
+          cgi.setResponseStatus("200 Ok");
+          auto json = Json.emptyObject();
+          json["packages"] = gitlab.allPackages().map!(p => p.toJson).array;
+          cgi.write(json.toString());
+        } else {
+          cgi.setResponseStatus("404 Not Found");
         }
       })
     .orElse!((){

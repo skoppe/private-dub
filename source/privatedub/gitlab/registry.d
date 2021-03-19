@@ -120,6 +120,11 @@ public:
     return PackageMeta(this, name, pack.get.versions);
   }
 
+  auto allPackages() {
+    import std.algorithm : startsWith;
+    return packages.byValue().filter!(p => p.name.startsWith(getPrefix));
+  }
+
   bool hasPackage(string name) {
     return !findPackage(name).isNull;
   }
