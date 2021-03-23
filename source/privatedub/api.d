@@ -156,16 +156,17 @@ void mirror(MatchedPath path, Registry[] registries, Cgi cgi) {
         auto isAccessToken = token.match!((AccessToken t) => true, (_) => false);
         if (!isAccessToken || !registry.validateToken(path.params.getToken)) {
           cgi.setResponseStatus("403 Forbidden");
+        } else if (!registry.readyForQueries) {
+          cgi.setResponseStatus("503 Service Unavailable");
         } else {
           auto archive = registry.mirror();
-          if (!registry.readyForQueries) {
-            cgi.setResponseStatus("503 Service Unavailable");
-          } else if (archive is null) {
+          if (archive is null) {
             cgi.setResponseStatus("404 Not Found");
+          } else {
+            cgi.header("Content-Type: application/zip");
+            cgi.header(`Content-Disposition: attachment; filename="mirror.zip"`);
+            cgi.write(archive.build);
           }
-          cgi.header("Content-Type: application/zip");
-          cgi.header(`Content-Disposition: attachment; filename="mirror.zip"`);
-          cgi.write(archive.build);
         }
       })
     .orElse!((){
