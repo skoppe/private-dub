@@ -36,7 +36,8 @@ struct DetermineDubPackage {
 
 struct FetchTags {
   int projectId;
-  void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config) {
+  void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config,
+                      shared GitlabRegistry registry) {
     import std.json;
 
     auto tags = config.getProjectTags(projectId).paginate()
@@ -49,9 +50,10 @@ struct FetchTags {
             return json;
           }
         })).joiner();
-    foreach (tag; tags)
-      queue.enqueue(FetchVersionedPackageFile(projectId,
-          tag["name"].str, tag["commit"]["id"].str));
+    foreach (tag; tags) {
+      if (!registry.hasProjectRef(projectId, tag["name"].str, tag["commit"]["id"].str))
+        queue.enqueue(FetchVersionedPackageFile(projectId, tag["name"].str, tag["commit"]["id"].str));
+    }
   }
 }
 
@@ -134,37 +136,70 @@ struct CrawlEvents {
   void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config,
       shared GitlabRegistry registry) {
     import std.array : appender, array;
-    import std.algorithm : sort, chunkBy, map;
+    import std.algorithm : sort, chunkBy, map, filter, canFind;
 
     // TODO: this misses mirrored projects
     auto events = config.getEvents("pushed", after).paginate()
       .map!(p => p.content.tryMatch!((JsonContent content) => content.expectJSONArray())).joiner();
 
-    auto app = appender!(NewTagEvent[]);
+    auto singleTagEvents = appender!(SingleTagEvent[]);
+    auto multipleTagEvents = appender!(MultipleTagEvent[]);
     foreach (event; events) {
       auto newTagOpt = event.extractNewTagEvent;
       if (newTagOpt.isNull)
         continue;
-      auto newTag = newTagOpt.get;
-      if (!registry.hasProjectRef(newTag.projectId, newTag.ref_, newTag.commitId))
-        app.put(newTag);
+      newTagOpt.get.match!((SingleTagEvent tag){
+          if (!registry.hasProjectRef(tag.projectId, tag.ref_, tag.commitId))
+            singleTagEvents.put(tag);
+        },(MultipleTagEvent tag){
+          multipleTagEvents.put(tag);
+        },(InvalidTagEvent tag){
+          import std.stdio : stderr;
+          import std.conv : to;
+          stderr.writeln("Invalid tag event received: "~tag.event.toString());
+          stderr.writeln("Recrawling project "~tag.projectId.to!string);
+          stderr.flush();
+          multipleTagEvents.put(MultipleTagEvent(tag.projectId)); // ensure we crawl the project
+        });
     }
-    auto chunks = app.data
+    auto projectsToRecrawl = multipleTagEvents.data
       .sort!((a, b) => a.projectId < b.projectId)
-      .chunkBy!(a => a.projectId);
+      .chunkBy!(a => a.projectId)
+      .map!(chunk => chunk[0])
+      .array();
 
-    foreach (chunk; chunks) {
+    auto chunkedTagsToFetch = singleTagEvents.data
+      .sort!((a, b) => a.projectId < b.projectId)
+      .chunkBy!(a => a.projectId)
+      .filter!(chunk => !projectsToRecrawl.canFind(chunk[0]));
+
+    foreach (chunk; chunkedTagsToFetch) {
       auto next = chunk[1].map!(event => FetchVersionedPackageFile(event.projectId, event.ref_, event.commitId));
       queue.enqueue(queue.serial(queue.parallel(next.array()), MarkProjectCrawled(chunk[0])));
+    }
+
+    foreach (projectId; projectsToRecrawl) {
+      queue.enqueue(queue.serial(FetchTags(projectId), MarkProjectCrawled(projectId)));
     }
   }
 }
 
-struct NewTagEvent {
+struct SingleTagEvent {
   int projectId;
   string ref_;
   string commitId;
 }
+
+struct MultipleTagEvent {
+  int projectId;
+}
+
+struct InvalidTagEvent {
+  int projectId;
+  JSONValue event;
+}
+
+alias NewTagEvent = SumType!(SingleTagEvent, MultipleTagEvent, InvalidTagEvent);
 
 Nullable!NewTagEvent extractNewTagEvent(JSONValue event) {
   if (event["action_name"].str != "pushed new")
@@ -178,24 +213,63 @@ Nullable!NewTagEvent extractNewTagEvent(JSONValue event) {
     return typeof(return).init;
   auto projectId = cast(int) event["project_id"].integer;
   try {
-    auto ref_ = push["ref"].str;
-    auto commitId = push["commit_to"].str;
-    return typeof(return)(NewTagEvent(projectId, ref_, commitId));
+    if (push["ref_count"].isNull) {
+      auto ref_ = push["ref"].str;
+      auto commitId = push["commit_to"].str;
+      return typeof(return)(NewTagEvent(SingleTagEvent(projectId, ref_, commitId)));
+    } else {
+      return typeof(return)(NewTagEvent(MultipleTagEvent(projectId)));
+    }
   } catch (Exception e) {
-    return typeof(return).init;
+    return typeof(return)(NewTagEvent(InvalidTagEvent(projectId, event)));
   }
 }
 
-@("events.extract.NewTagEvent")
+@("events.extract.NewTagEvent.single")
 unittest {
   import unit_threaded;
   import std.json : parseJSON;
   enum rawEvent = `{"action_name":"pushed new","author":{"avatar_url":"https:\/\/git.example.com\/uploads\/-\/system\/user\/avatar\/42\/avatar.png","id":42,"name":"John Doe","state":"active","username":"jdoe","web_url":"https:\/\/git.examples.com\/jdoe"},"author_id":42,"author_username":"jdoe","created_at":"2021-10-10T10:39:42.931Z","id":23403,"project_id":892,"push_data":{"action":"created","commit_count":1,"commit_from":null,"commit_title":"Some commit","commit_to":"3ee2d8ef4875b4b3c4798dbc3b6fea1447a5f51c","ref":"v2.9.9","ref_count":null,"ref_type":"tag"},"target_id":null,"target_iid":null,"target_title":null,"target_type":null}`;
   auto tagEvent = extractNewTagEvent(parseJSON(rawEvent));
   tagEvent.isNull.shouldBeFalse;
-  tagEvent.projectId.should == 892;
-  tagEvent.ref_.should == "v2.9.9";
-  tagEvent.commitId.should == "3ee2d8ef4875b4b3c4798dbc3b6fea1447a5f51c";
+  tagEvent.get.tryMatch!((SingleTagEvent event){
+      event.projectId.should == 892;
+      event.ref_.should == "v2.9.9";
+      event.commitId.should == "3ee2d8ef4875b4b3c4798dbc3b6fea1447a5f51c";
+    });
+}
+
+@("events.extract.NewTagEvent.multiple")
+unittest {
+  import unit_threaded;
+  import std.json : parseJSON;
+  enum rawEvent = `{"action_name":"pushed new","author":{"avatar_url":"https:\/\/git.example.com\/uploads\/-\/system\/user\/avatar\/42\/avatar.png","id":42,"name":"John Doe","state":"active","username":"jdoe","web_url":"https:\/\/git.examples.com\/jdoe"},"author_id":42,"author_username":"jdoe","created_at":"2021-10-10T10:39:42.931Z","id":23403,"project_id":892,"push_data":{"commit_count": 0,"action": "created","ref_type": "tag","commit_from": null,"commit_to": null,"ref": null,"commit_title": null,"ref_count": 13},"target_id":null,"target_iid":null,"target_title":null,"target_type":null}`;
+  auto tagEvent = extractNewTagEvent(parseJSON(rawEvent));
+  tagEvent.isNull.shouldBeFalse;
+  tagEvent.get.tryMatch!((MultipleTagEvent event){
+      event.projectId.should == 892;
+    });
+}
+
+@("events.extract.NewTagEvent.none")
+unittest {
+  import unit_threaded;
+  import std.json : parseJSON;
+  enum rawEvent = `{"action_name":"pushed new","author":{"avatar_url":"https:\/\/git.example.com\/uploads\/-\/system\/user\/avatar\/42\/avatar.png","id":42,"name":"John Doe","state":"active","username":"jdoe","web_url":"https:\/\/git.examples.com\/jdoe"},"author_id":42,"author_username":"jdoe","created_at":"2021-10-10T10:39:42.931Z","id":23403,"project_id":892,"target_id":null,"target_iid":null,"target_title":null,"target_type":null}`;
+  auto tagEvent = extractNewTagEvent(parseJSON(rawEvent));
+  tagEvent.isNull.shouldBeTrue;
+}
+
+@("events.extract.NewTagEvent.invalid")
+unittest {
+  import unit_threaded;
+  import std.json : parseJSON;
+  enum rawEvent = `{"action_name":"pushed new","author":{"avatar_url":"https:\/\/git.example.com\/uploads\/-\/system\/user\/avatar\/42\/avatar.png","id":42,"name":"John Doe","state":"active","username":"jdoe","web_url":"https:\/\/git.examples.com\/jdoe"},"author_id":42,"author_username":"jdoe","created_at":"2021-10-10T10:39:42.931Z","id":23403,"project_id":892,"push_data":{"commit_count": 0,"action": "created","ref_type": "tag","commit_from": null,"commit_to": null,"ref": null,"commit_title": null,"ref_count": null},"target_id":null,"target_iid":null,"target_title":null,"target_type":null}`;
+  auto tagEvent = extractNewTagEvent(parseJSON(rawEvent));
+  tagEvent.isNull.shouldBeFalse;
+  tagEvent.get.tryMatch!((InvalidTagEvent event){
+      event.projectId.should == 892;
+    });
 }
 
 alias CrawlerWorkQueue = WorkQueue!(FindProjects, DetermineDubPackage, FetchTags, FetchVersionedPackageFile, ProjectVersionedPackage, MarkProjectCrawled,

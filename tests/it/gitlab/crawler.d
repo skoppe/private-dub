@@ -38,7 +38,7 @@ unittest {
     }
   }
 
-  auto gitlabConfig = GitlabConfig("abcd","git.example.com","./tmp/storage",1,"test.", "", new MockInterceptor());
+  auto gitlabConfig = GitlabConfig("abcd","git.example.com","./tmp/storage-1",1,"test.", "", new MockInterceptor());
   CrawlerWorkQueue queue;
   auto registry = cast(shared) new GitlabRegistry(gitlabConfig);
 
@@ -46,6 +46,25 @@ unittest {
   auto items = queue.flatten();
 
   items.should == [WorkST(FetchVersionedPackageFile(892, "v2.9.9", "3ee2d8ef4875b4b3c4798dbc3b6fea1447a5f51c")), WorkST(MarkProjectCrawled(892, ""))];
+}
+
+@("CrawlEvents.multiple-tags")
+unittest {
+  class MockInterceptor : Interceptor {
+    Response opCall(Request rq, RequestHandler next)
+    {
+      return MockResponse.json(`[{"action_name":"pushed new","author":{"avatar_url":"https:\/\/git.example.com\/uploads\/-\/system\/user\/avatar\/42\/avatar.png","id":42,"name":"John Doe","state":"active","username":"jdoe","web_url":"https:\/\/git.examples.com\/jdoe"},"author_id":42,"author_username":"jdoe","created_at":"2021-10-10T10:39:42.931Z","id":23403,"project_id":892,"push_data":{"commit_count": 0,"action": "created","ref_type": "tag","commit_from": null,"commit_to": null,"ref": null,"commit_title": null,"ref_count": 13},"target_id":null,"target_iid":null,"target_title":null,"target_type":null}]`, 200);
+    }
+  }
+
+  auto gitlabConfig = GitlabConfig("abcd","git.example.com","./tmp/storage-2",1,"test.", "", new MockInterceptor());
+  CrawlerWorkQueue queue;
+  auto registry = cast(shared) new GitlabRegistry(gitlabConfig);
+
+  CrawlEvents().run(queue, gitlabConfig, registry);
+  auto items = queue.flatten();
+
+  items.should == [WorkST(FetchTags(892)), WorkST(MarkProjectCrawled(892, ""))];
 }
 
 auto flatten(Queue)(Queue queue) {
