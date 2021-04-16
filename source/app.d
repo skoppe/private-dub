@@ -28,8 +28,10 @@ auto periodicSync(StopToken stopToken, Registry[] registries) {
 				import concurrency.timer;
 				import core.time : dur;
 				import std.algorithm : each;
+				import privatedub.util : CircuitBreaker, SuccessiveFailures;
+				CircuitBreaker!(SuccessiveFailures!3) breaker;
 				do {
-					registries.each!(r => r.sync(stopToken));
+					breaker.run({registries.each!(r => r.sync(stopToken));});
 				} while (stopToken.wait(dur!"seconds"(60)));
 			}, stopToken, registries));
 }
