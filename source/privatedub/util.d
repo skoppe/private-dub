@@ -81,3 +81,34 @@ auto firstOpt(Range)(Range r) {
     return Nullable!T.init;
   return Nullable!T(r.front);
 }
+
+struct SuccessiveFailures(size_t n) {
+	private size_t count;
+	void tagSuccess() {
+		count = 0;
+	}
+	bool tagFailure() {
+		count ++;
+		return count >= n;
+	}
+}
+
+struct CircuitBreaker(Logic) {
+	private Logic logic;
+	void run(DG)(DG dg) {
+		try {
+			dg();
+			logic.tagSuccess();
+		} catch (Exception e) {
+			if (logic.tagFailure())
+				throw e;
+			else {
+				import std.stdio : stderr;
+				(() @trusted {
+					stderr.writeln(e);
+					stderr.flush();
+				})();
+			}
+		}
+	}
+}
