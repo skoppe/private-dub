@@ -307,7 +307,7 @@ unittest {
   auto path = Path("/root/$section/stuff/$id");
   auto match = PathRequest("/root/abcd/stuff/1234").matches(path);
   match.isNull.shouldBeFalse;
-  match.params.shouldEqual(["section": "abcd", "id": "1234"]);
+  match.get.params.shouldEqual(["section": "abcd", "id": "1234"]);
 
   PathRequest("/root/abcd/stuff/1234/extra").matches(path).isNull.shouldBeFalse;
   PathRequest("/root/abcd/stuff/").matches(path).isNull.shouldBeTrue;
@@ -319,5 +319,5 @@ unittest {
   PathRequest("/a/b/c/d").matches(Path("/a"), false).isNull.shouldBeFalse;
   auto match2 = PathRequest("/a/b/c/d").matches(Path("/a/$q"), false);
   match2.isNull.shouldBeFalse;
-  match2.params.shouldEqual(["q": "b"]);
+  match2.get.params.shouldEqual(["q": "b"]);
 }

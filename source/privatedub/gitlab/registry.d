@@ -453,9 +453,9 @@ authors "foobar"
   registry.addVersionedSubPackage(55, "foo.bar", "v0.0.1", "./fx/", parsePackageRecipe(subSdl, "dub.sdl"));
 
   auto pkg = registry.lock().findPackage("foo.bar");
-  pkg.toJson().toString.should == `{"projectId":55,"versions":[{"version":"v0.0.1","recipe":{"subPackages":[{"description":"fx library","authors":["foobar"],"copyright":"Copyright © 2021, foobar","name":"fx"}],"dependencies":{"foo.bar:fx":">=0.0.0"},"targetType":"library","name":"foo.bar"},"commitId":"commit"}],"name":"foo.bar"}`;
-  pkg.projectId.should == 55;
-  pkg.name.should == "foo.bar";
-  pkg.versions.length.should == 1;
-  pkg.versions[0].recipe.toPackageDependencyInfo().toString.should == `{"subPackages":[{"dependencies":{},"configurations":[],"name":"fx"}],"dependencies":{"foo.bar:fx":">=0.0.0"},"configurations":[],"name":"foo.bar"}`;
+  pkg.get.toJson().toString.should == `{"projectId":55,"versions":[{"version":"v0.0.1","recipe":{"subPackages":[{"description":"fx library","authors":["foobar"],"copyright":"Copyright © 2021, foobar","name":"fx"}],"dependencies":{"foo.bar:fx":">=0.0.0"},"targetType":"library","name":"foo.bar"},"commitId":"commit"}],"name":"foo.bar"}`;
+  pkg.get.projectId.should == 55;
+  pkg.get.name.should == "foo.bar";
+  pkg.get.versions.length.should == 1;
+  pkg.get.versions[0].recipe.toPackageDependencyInfo().toString.should == `{"subPackages":[{"dependencies":{},"configurations":[],"name":"fx"}],"dependencies":{"foo.bar:fx":">=0.0.0"},"configurations":[],"name":"foo.bar"}`;
 }
