@@ -38,11 +38,12 @@ struct Endpoints {
   string files(int projectId, string filePath, string ref_) {
     import std.conv : to;
     import std.algorithm : skipOver;
+    import std.uri : encodeComponent;
 
     filePath.skipOver("./");
 
     return buildPath(projects(), projectId.to!string, "repository/files",
-        encodeComponent(filePath) ~ "?ref=" ~ ref_);
+                     encodeComponent(filePath) ~ "?ref=" ~ ref_.encodeComponent);
   }
 
   string project(int projectId) {
@@ -63,8 +64,9 @@ struct Endpoints {
 
   string archive(int projectId, string ref_) {
     import std.conv : to;
+    import std.uri : encodeComponent;
 
-    return buildPath(projects(), projectId.to!string, "repository/archive.zip?sha="~ref_);
+    return buildPath(projects(), projectId.to!string, "repository/archive.zip?sha="~ref_.encodeComponent);
   }
 
   string version_() {
@@ -266,4 +268,10 @@ bool isDubPackage(GitlabConfig config, int projectId) {
 
 struct GitlabDubPackage {
   int projectId;
+}
+
+unittest {
+  import unit_threaded;
+  auto endpoints = Endpoints("https://my.gitlab.com");
+  endpoints.files(991, "dub.sdl", "v2.0.3+1.1.0h").should == "https://my.gitlab.com/projects/991/repository/files/dub.sdl?ref=v2.0.3%2B1.1.0h";
 }
