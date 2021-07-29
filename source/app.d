@@ -15,8 +15,23 @@ void main() {
 
 	nursery.run(api(registries));
 	nursery.run(periodicSync(nursery.getStopToken, registries));
+	nursery.run(periodicGC());
 
 	nursery.sync_wait();
+}
+
+auto periodicGC() @safe {
+	import concurrency.stream;
+	import core.time : seconds;
+	import core.memory : GC;
+	import std.experimental.logger;
+
+	return intervalStream(30.seconds).collect(() shared @trusted {
+			trace(GC.stats());
+			GC.collect();
+			GC.minimize();
+			trace(GC.stats());
+		});
 }
 
 auto periodicSync(StopToken stopToken, Registry[] registries) {
