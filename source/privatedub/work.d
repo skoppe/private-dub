@@ -121,6 +121,8 @@ struct Scheduler(Queue) {
         static if (hasMember!(typeof(t), "run")) {
           import std.traits : Parameters;
           import std.meta : AliasSeq;
+          import std.experimental.logger;
+          trace(t);
 
           alias Params = Parameters!(t.run!Queue)[1 .. $];
           auto selectedArgs = filterByType!(AliasSeq!(Params))(args);
