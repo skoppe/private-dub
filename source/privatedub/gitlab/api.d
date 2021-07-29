@@ -225,7 +225,7 @@ GitlabResponse getProjectTags(GitlabConfig config, int id) {
 }
 
 GitlabResponse getProjectFileMeta(GitlabConfig config, int id, string filepath, string ref_) {
-  return GitlabResponse(config.makeRequest().execute("HEAD",
+  return GitlabResponse(config.makeRequest().execute("GET",
       config.endpoints.files(id, filepath, ref_)), config);
 }
 
