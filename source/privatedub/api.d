@@ -7,6 +7,7 @@ import privatedub.util;
 import std.meta : AliasSeq;
 import std.typecons : Nullable;
 import sumtype;
+import concurrency.sender : toSenderObject, SenderObjectBase;
 
 auto api(Registry[] registries) {
   import concurrency.nursery;
@@ -29,7 +30,9 @@ auto api(Registry[] registries) {
               {
                 auto match = pathRequest.matches(path);
                 if (!match.isNull) {
-                  route(match.get, regs, cgi);
+                  auto task = route(match.get, regs, cgi);
+                  if (task !is null)
+                    nursery.run(task);
                   return;
                 }
               }
@@ -45,7 +48,7 @@ auto api(Registry[] registries) {
   return nursery;
 }
 
-alias Routes = AliasSeq!(getInfos, getDownloadUri, getPackages, isReadyForQueries, mirror, packages);
+alias Routes = AliasSeq!(getInfos, getDownloadUri, getPackages, isReadyForQueries, mirror, packages, crawlProject);
 
 struct NullToken {
 }
@@ -63,7 +66,7 @@ alias Token = SumType!(NullToken, AccessToken, OAuthToken);
 @(Path("/token/$token/api/packages/search"))
 @(Path("/oauthtoken/$oauthtoken/api/packages/search"))
 @(Path("/api/packages/search"))
-void getPackages(MatchedPath path, Registry[] registries, Cgi cgi) {
+SenderObjectBase!void getPackages(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.algorithm : map;
   import asdf;
   import std.string : stripLeft;
@@ -87,12 +90,13 @@ void getPackages(MatchedPath path, Registry[] registries, Cgi cgi) {
     cgi.setResponseStatus("404 Not Found");
   }
   cgi.close();
+  return null;
 }
 
 @(Path("/token/$token/api/packages/infos"))
 @(Path("/oauthtoken/$oauthtoken/api/packages/infos"))
 @(Path("/api/packages/infos"))
-void getInfos(MatchedPath path, Registry[] registries, Cgi cgi) {
+SenderObjectBase!void getInfos(MatchedPath path, Registry[] registries, Cgi cgi) {
   import dub.internal.vibecompat.data.json : Json, parseJsonString;
   import std.format : format;
   import std.exception : enforce;
@@ -114,12 +118,13 @@ void getInfos(MatchedPath path, Registry[] registries, Cgi cgi) {
     cgi.setResponseStatus("404 Not Found");
   }
   cgi.close();
+  return null;
 }
 
 @(Path("/token/$token/packages/$name/$version"))
 @(Path("/oauthtoken/$oauthtoken/packages/$name/$version"))
 @(Path("/packages/$name/$version"))
-void getDownloadUri(MatchedPath path, Registry[] registries, Cgi cgi) {
+SenderObjectBase!void getDownloadUri(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.path : stripExtension;
 
   auto name = path.params["name"];
@@ -132,20 +137,22 @@ void getDownloadUri(MatchedPath path, Registry[] registries, Cgi cgi) {
         cgi.close();
       })
     .orElse!(() => cgi.setResponseStatus("404 Not Found"));
+  return null;
 }
 
 @(Path("/status/readyforqueries"))
 @(Path("/oauthtoken/$oauthtoken/status/readyforqueries"))
-void isReadyForQueries(MatchedPath path, Registry[] registries, Cgi cgi) {
+SenderObjectBase!void isReadyForQueries(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.algorithm : all;
   if (registries.all!(r => r.readyForQueries()))
     cgi.setResponseStatus("204 No Content");
   else
     cgi.setResponseStatus("503 Service Unavailable");
+  return null;
 }
 
 @(Path("/token/$token/mirror/$registry"))
-void mirror(MatchedPath path, Registry[] registries, Cgi cgi) {
+SenderObjectBase!void mirror(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.algorithm : all;
 
   auto r = path.params
@@ -172,11 +179,12 @@ void mirror(MatchedPath path, Registry[] registries, Cgi cgi) {
     .orElse!((){
         cgi.setResponseStatus("404 Not Found");
       });
+  return null;
 }
 
 @(Path("/oauthtoken/$oauthtoken/packages/$registry"))
 @(Path("/token/$token/packages/$registry"))
-void packages(MatchedPath path, Registry[] registries, Cgi cgi) {
+SenderObjectBase!void packages(MatchedPath path, Registry[] registries, Cgi cgi) {
   import std.algorithm : all, map;
   import std.array : array;
   import dub.internal.vibecompat.data.json : Json;
@@ -206,6 +214,7 @@ void packages(MatchedPath path, Registry[] registries, Cgi cgi) {
     .orElse!((){
         cgi.setResponseStatus("404 Not Found");
       });
+  return null;
 }
 
 struct SearchResult {
