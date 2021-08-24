@@ -55,7 +55,7 @@ struct WorkQueue(Ts...) {
     WorkQueue!Ts[] queue; // have to use an array else it will refer to itself in a loop
   }
 
-  ParallelWork parallel(W)(W[] ws) {
+  static ParallelWork parallel(W)(W[] ws) {
     import std.algorithm : each;
 
     List!Item items;
@@ -63,7 +63,7 @@ struct WorkQueue(Ts...) {
     return ParallelWork([WorkQueue!Ts(items)]);
   }
 
-  ParallelWork parallel(Ws...)(auto ref Ws ws) {
+  static ParallelWork parallel(Ws...)(auto ref Ws ws) {
     import std.range : iota;
     import std.algorithm : map, joiner, each;
     import std.conv : text, to;
@@ -83,7 +83,7 @@ struct WorkQueue(Ts...) {
     items.insertBack(Item(t));
   }
 
-  SerialWork serial(Ws...)(auto ref Ws ws) {
+  static SerialWork serial(Ws...)(auto ref Ws ws) {
     import std.range : iota;
     import std.algorithm : map, joiner;
     import std.conv : text, to;
@@ -99,7 +99,8 @@ struct WorkQueue(Ts...) {
   }
 }
 
-struct Scheduler(Queue) {
+struct Scheduler(Q) {
+  alias Queue = Q;
   import concurrency.stoptoken : StopToken;
   Queue queue;
   bool drain(Runner, Args...)(StopToken stopToken, auto ref Runner runner, auto ref Args args) {

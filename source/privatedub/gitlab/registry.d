@@ -337,6 +337,35 @@ public:
     import std.stdio;
     import privatedub.gitlab.crawler;
 
+    if ((cast() lastCrawl).isNull) {
+      if (!loadFromMirror()) {
+        writeln(config.hostname, ": syncing metadata, this may take a few minutes.");
+        if (!this.crawl(stopToken, CrawlerScheduler.Queue.serial(FindProjects(), CrawlComplete()))) {
+          writeln(config.hostname, ": syncing cancelled.");
+          return;
+        }
+      }
+      writeln(config.hostname, ": syncing done.");
+    }
+    assert(!(cast() lastCrawl).isNull);
+    if (!this.crawl(stopToken, CrawlerScheduler.Queue.serial(CrawlEvents((cast() lastCrawl).get), CrawlComplete())))
+      writeln(config.hostname, ": syncing cancelled.");
+    stdout.flush();
+  }
+
+  auto crawlProject(StopToken stopToken, int projectId) @trusted {
+    import privatedub.gitlab.crawler;
+    return this.crawl(stopToken, DetermineDubPackage(projectId));
+  }
+
+  bool crawl(T)(StopToken stopToken, T t) @trusted {
+    return (cast(shared)this).crawl!T(stopToken, t);
+  }
+
+  bool crawl(T)(StopToken stopToken, T t) shared @trusted {
+    import std.stdio;
+    import privatedub.gitlab.crawler;
+
     struct CrawlerResultNotifier {
       shared GitlabRegistry registry;
       void notify(ref ProjectVersionedPackage task) {
@@ -362,23 +391,8 @@ public:
     }
 
     CrawlerScheduler crawler;
-    if ((cast() lastCrawl).isNull) {
-      if (!loadFromMirror()) {
-        writeln(config.hostname, ": syncing metadata, this may take a few minutes.");
-        crawler.queue.enqueue(crawler.queue.serial(FindProjects(), CrawlComplete()));
-        if (!crawler.drain(stopToken, CrawlerResultNotifier(this), cast()config, this)) {
-          writeln(config.hostname, ": syncing cancelled.");
-          return;
-        }
-      }
-      writeln(config.hostname, ": syncing done.");
-    }
-    assert(!(cast() lastCrawl).isNull);
-    crawler.queue.enqueue(crawler.queue.serial(CrawlEvents((cast() lastCrawl)
-        .get), CrawlComplete()));
-    if (!crawler.drain(stopToken, CrawlerResultNotifier(this), cast()config, this))
-      writeln(config.hostname, ": syncing cancelled.");
-    stdout.flush();
+    crawler.queue.enqueue(t);
+    return crawler.drain(stopToken, CrawlerResultNotifier(this), cast()config, this);
   }
 
   private bool loadFromMirror() shared {
