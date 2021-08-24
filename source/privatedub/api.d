@@ -182,6 +182,45 @@ SenderObjectBase!void mirror(MatchedPath path, Registry[] registries, Cgi cgi) {
   return null;
 }
 
+@(Path("/token/$token/crawl/$registry/project/$id"))
+SenderObjectBase!void crawlProject(MatchedPath path, Registry[] registries, Cgi cgi) {
+  import std.algorithm : all;
+  import privatedub.gitlab.registry;
+  import concurrency.sender : just;
+  import concurrency.stoptoken;
+  import concurrency.operations : withStopToken, via;
+  import concurrency.thread : ThreadSender;
+  import std.conv : to;
+
+  return path.params
+    .getOpt("registry")
+    .andThen!(name => findRegistry(registries, name))
+    .andThen!((registry) {
+        auto token = path.params.getToken;
+        auto isAccessToken = token.match!((AccessToken t) => true, (_) => false);
+        if (!isAccessToken || !registry.validateToken(path.params.getToken)) {
+          cgi.setResponseStatus("403 Forbidden");
+        } else if (!registry.readyForQueries) {
+          cgi.setResponseStatus("503 Service Unavailable");
+        } else if (auto gitlab = cast(GitlabRegistry)registry) {
+          cgi.setResponseStatus("204 No Content");
+          return just(gitlab, path.params["id"].to!int)
+            .withStopToken((StopToken stopToken, GitlabRegistry reg, int projectId){
+              reg.crawlProject(stopToken, projectId);
+            })
+            .via(ThreadSender())
+            .toSenderObject;
+        } else {
+          cgi.setResponseStatus("400 Bad Request");
+        }
+        return null;
+      })
+    .orElse!((){
+        cgi.setResponseStatus("404 Not Found");
+        return null;
+      });
+}
+
 @(Path("/oauthtoken/$oauthtoken/packages/$registry"))
 @(Path("/token/$token/packages/$registry"))
 SenderObjectBase!void packages(MatchedPath path, Registry[] registries, Cgi cgi) {
