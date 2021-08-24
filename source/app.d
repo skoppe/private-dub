@@ -27,10 +27,8 @@ auto periodicGC() @safe {
 	import std.experimental.logger;
 
 	return intervalStream(30.seconds).collect(() shared @trusted {
-			trace(GC.stats());
 			GC.collect();
 			GC.minimize();
-			trace(GC.stats());
 		});
 }
 
