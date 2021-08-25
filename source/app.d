@@ -24,7 +24,6 @@ auto periodicGC() @safe {
 	import concurrency.stream;
 	import core.time : seconds;
 	import core.memory : GC;
-	import std.experimental.logger;
 
 	return intervalStream(30.seconds).collect(() shared @trusted {
 			GC.collect();
@@ -36,17 +35,17 @@ auto periodicSync(StopToken stopToken, Registry[] registries) {
 	import concurrency.utils;
 	import concurrency.thread;
 	import concurrency.operations;
+	import concurrency.stream : intervalStream;
+	import core.time : dur;
 
-	return ThreadSender().then(closure((StopToken stopToken, Registry[] registries) @safe {
-				import concurrency.timer;
-				import core.time : dur;
-				import std.algorithm : each;
-				import privatedub.util : CircuitBreaker, SuccessiveFailures;
-				CircuitBreaker!(SuccessiveFailures!3) breaker;
-				do {
+	return intervalStream(dur!"seconds"(60), true)
+		.collect(closure((StopToken stopToken, Registry[] registries) @safe {
+					import std.algorithm : each;
+					import privatedub.util : CircuitBreaker, SuccessiveFailures;
+					CircuitBreaker!(SuccessiveFailures!3) breaker;
 					breaker.run({registries.each!(r => r.sync(stopToken));});
-				} while (stopToken.wait(dur!"seconds"(60)));
-			}, stopToken, registries));
+				}, stopToken, registries))
+		.via(ThreadSender());
 }
 
 Registry[] getRegistries() {
