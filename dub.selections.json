@@ -9,7 +9,7 @@
 		"botan-math": "1.0.3",
 		"cachetools": "0.3.1",
 		"concepts": "0.0.8",
-		"concurrency": "3.2.0",
+		"concurrency": "3.3.1",
 		"diet-ng": "1.7.2",
 		"dini": "2.0.0",
 		"dub": "1.22.0",
