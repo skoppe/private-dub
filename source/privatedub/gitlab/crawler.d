@@ -29,7 +29,8 @@ struct FindProjects {
 struct DetermineDubPackage {
   int projectId;
   void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config) {
-    if (config.isDubPackage(projectId))
+    string branch = config.getDefaultBranch(projectId);
+    if (config.isDubPackage(projectId, branch))
       queue.enqueue(FetchTags(projectId));
   }
 }

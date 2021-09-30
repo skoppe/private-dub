@@ -53,7 +53,6 @@ struct Endpoints {
 
   string tags(int projectId) {
     import std.conv : to;
-
     return buildPath(projects(), projectId.to!string, "repository/tags");
   }
 
@@ -261,9 +260,21 @@ struct PaginatedGitlabResponse {
   }
 }
 
-bool isDubPackage(GitlabConfig config, int projectId) {
-  return config.getProjectFileMeta(projectId, "dub.sdl", "master").isOk()
-    || config.getProjectFileMeta(projectId, "dub.json", "master").isOk();
+string getDefaultBranch(GitlabConfig config, int projectId) {
+  auto response = GitlabResponse(config.makeRequest().execute("GET",
+      config.endpoints.project(projectId)), config);
+
+  return response.content.tryMatch!((JsonContent content) {
+      if (auto b = "default_branch" in content.json()) {
+        return b.str;
+      }
+      return "master";
+    });
+}
+
+bool isDubPackage(GitlabConfig config, int projectId, string branch) {
+  return config.getProjectFileMeta(projectId, "dub.sdl", branch).isOk()
+    || config.getProjectFileMeta(projectId, "dub.json", branch).isOk();
 }
 
 struct GitlabDubPackage {
