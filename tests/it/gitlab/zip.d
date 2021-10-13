@@ -7,6 +7,7 @@ unittest {
   import std.file : rmdirRecurse, dirEntries, SpanMode, exists;
   import std.zip : ZipArchive;
   import std.string : replace;
+  import privatedub.util : ignoreException;
 
   rmdirRecurse("./tests/it/files/unzip").ignoreException();
 
@@ -16,8 +17,4 @@ unittest {
   foreach(entry; dirEntries("./tests/it/files/zip", "*", SpanMode.depth)) {
     entry.name.replace("zip", "unzip").exists.should == true;
   }
-}
-
-void ignoreException(B)(lazy B block) {
-  try { block(); } catch (Exception e) {}
 }

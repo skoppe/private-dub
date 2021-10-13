@@ -112,3 +112,7 @@ struct CircuitBreaker(Logic) {
 		}
 	}
 }
+
+void ignoreException(B)(lazy B block) {
+  try { block(); } catch (Exception e) {}
+}
