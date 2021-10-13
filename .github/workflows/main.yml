@@ -39,7 +39,7 @@ jobs:
         with:
           name: private-dub
           path: private-dub
-        if: matrix.dc == 'ldc-latest'
+        if: matrix.dc == 'ldc-1.27.1'
 
   push:
     name: Push to hub.docker
