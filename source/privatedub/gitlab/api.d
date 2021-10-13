@@ -266,7 +266,8 @@ string getDefaultBranch(GitlabConfig config, int projectId) {
 
   return response.content.tryMatch!((JsonContent content) {
       if (auto b = "default_branch" in content.json()) {
-        return b.str;
+        if (!b.isNull)
+          return b.str;
       }
       return "master";
     });
