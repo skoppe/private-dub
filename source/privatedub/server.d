@@ -220,8 +220,9 @@ void cgiMainImpl(alias fun, CustomCgi = Cgi, long maxContentLength = defaultMaxC
         this.connection = connection;
         this.stopToken = stopToken;
       }
-      void run() {
-        runChild!(fun)(cast()connection, cast()stopToken);
+      void run() nothrow {
+        import privatedub.util;
+        runChild!(fun)(cast()connection, cast()stopToken).ignoreException();
       }
     }
 		nursery.run(ThreadSender().then(cast(void delegate() shared @safe)&(new Temp(connection, stopToken)).run));
