@@ -126,7 +126,6 @@ public:
     import std.datetime.systime : Clock;
     import core.time : minutes;
     import std.uri : encodeComponent;
-    import std.format : format;
     import requests : Request;
 
     auto now = cast(DateTime)Clock.currTime;
@@ -135,7 +134,7 @@ public:
         return Nullable!Json(c.content);
       }
     }
-    auto packages = `["%s"]`.format(name);
+    auto packages = `["`~name~`"]`;
     auto url = config.upstream ~ "/api/packages/infos";
     url.queryParams.add("packages", packages);
     url.queryParams.add("minimize", "true");
