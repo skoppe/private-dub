@@ -17,7 +17,7 @@ void main() {
 	nursery.run(periodicSync(nursery.getStopToken, registries));
 	nursery.run(periodicGC());
 
-	nursery.sync_wait();
+	nursery.syncWait();
 }
 
 auto periodicGC() @safe {
