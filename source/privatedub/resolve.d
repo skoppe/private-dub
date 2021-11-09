@@ -71,7 +71,8 @@ Json toPackageDependencyInfo(VersionedPackage p) {
   import std.exception : enforce;
 
   auto json = p.recipe.toPackageDependencyInfo();
-  json["commitID"] = p.commitId;
+  if (p.commitId.length > 0)
+    json["commitID"] = p.commitId;
 
   enforce(p.ref_.length > 0, "p.ref_ is length 0");
   if (p.ref_[0] == 'v' && !parseVersion(p.ref_).isNull)
@@ -84,9 +85,9 @@ Json toPackageDependencyInfo(VersionedPackage p) {
 
 unittest {
   import unit_threaded;
-  VersionedPackage("v1.0.0").toPackageDependencyInfo.toString.shouldEqual(`{"subPackages":[],"dependencies":{},"configurations":[],"commitID":"","version":"1.0.0","name":""}`);
-  VersionedPackage("1.0.0").toPackageDependencyInfo.toString.shouldEqual(`{"subPackages":[],"dependencies":{},"configurations":[],"commitID":"","version":"~1.0.0","name":""}`);
-  VersionedPackage("vibeTask").toPackageDependencyInfo.toString.shouldEqual(`{"subPackages":[],"dependencies":{},"configurations":[],"commitID":"","version":"~vibeTask","name":""}`);
+  VersionedPackage("v1.0.0").toPackageDependencyInfo.toString.shouldEqual(`{"subPackages":[],"dependencies":{},"configurations":[],"version":"1.0.0","name":""}`);
+  VersionedPackage("1.0.0").toPackageDependencyInfo.toString.shouldEqual(`{"subPackages":[],"dependencies":{},"configurations":[],"version":"~1.0.0","name":""}`);
+  VersionedPackage("vibeTask").toPackageDependencyInfo.toString.shouldEqual(`{"subPackages":[],"dependencies":{},"configurations":[],"version":"~vibeTask","name":""}`);
 }
 
 Json toPackageDependencyInfo(PackageRecipe p) {

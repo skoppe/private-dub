@@ -94,7 +94,7 @@ public:
     return PackageMeta(this, name, content.get["versions"][].map!((v) {
         PackageRecipe recipe;
         parseJson(recipe, v, "");
-        return VersionedPackage(v["version"].get!string.normalizeVersion, "", recipe);//v["commitID"].get!string, recipe);
+        return VersionedPackage(v["version"].get!string.normalizeVersion, "", recipe);
       }).array());
   }
 
