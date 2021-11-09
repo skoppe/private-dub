@@ -15,6 +15,7 @@ PackageMeta[string] resolve(Registry[] registries, string name) {
   import std.range : chain;
 
   PackageMeta[string] packages;
+  bool[string] visited;
 
   Appender!(PackageName[]) queue;
   queue.put(PackageName.parse(name));
@@ -22,8 +23,10 @@ PackageMeta[string] resolve(Registry[] registries, string name) {
   while (queue.data.length) {
     auto current = queue.data[$ - 1];
     queue.shrinkTo(queue.data.length - 1);
-    if (current.base in packages)
+
+    if (current.base in visited)
       continue;
+    visited[current.base] = true;
 
     registries.findRegistry(current).andThen!((reg){
       auto meta = reg.getPackageMeta(current.base);
@@ -31,11 +34,8 @@ PackageMeta[string] resolve(Registry[] registries, string name) {
 
       meta.versions.each!((v) {
         auto deps = chain(v.recipe.buildSettings.getDependencies(),
-        v.recipe.buildTypes.byValue.map!(t => getDependencies(t)).joiner,
-        v.recipe.configurations.map!(c => c.buildSettings.getDependencies).joiner // v.recipe.subPackages.map!(s => chain(
-        //                                      s.recipe.buildSettings.getDependencies(),
-        //                                      s.recipe.buildTypes.byValue.map!(getDependencies).joiner,
-        //                                      s.recipe.configurations.map!(c => c.buildSettings.getDependencies).joiner)).joiner
+                          v.recipe.buildTypes.byValue.map!(t => getDependencies(t)).joiner,
+                          v.recipe.configurations.map!(c => c.buildSettings.getDependencies).joiner
         ).array().sort!((a, b) => a.base < b.base)
         .uniq!((a, b) => a.base == b.base);
         deps.each!((p) {
@@ -44,7 +44,7 @@ PackageMeta[string] resolve(Registry[] registries, string name) {
           }
         });
       });
-      });
+    });
   }
   return packages;
 }

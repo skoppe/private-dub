@@ -99,8 +99,7 @@ public:
   }
 
   bool hasPackage(string name) {
-    getPackage(name); // we rely on exceptions here
-    return true;
+    return !getPackage(name).isNull;
   }
 
   Nullable!string getDownloadUri(string name, string rawVer, Token token) {
