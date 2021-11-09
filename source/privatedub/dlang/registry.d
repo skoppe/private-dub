@@ -13,7 +13,7 @@ import dub.recipe.json : parseJson;
 struct DlangRegistryConfig {
   import dini : IniSection;
 
-  enum type = "dlang";
+  enum type = "dub-packages-index";
   string storage = "./storage";
   int priority = 1;
 

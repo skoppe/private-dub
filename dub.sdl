@@ -6,6 +6,7 @@ license "MIT"
 dependency "requests" version="~>1.1.5"
 dependency "dub" version="~>1.22.0"
 dependency "concurrency" version="~>4.0.0"
+dependency "urld" version="~>2.1.1"
 dependency "concepts" version="~>0.0.8"
 dependency "sumtype" version="~>0.9.4"
 dependency "arsd-official:cgi" version="~>8.2.0"
@@ -28,12 +29,11 @@ configuration "unittest" {
 	excludedSourceFiles "source/app.d"
 	preBuildCommands "$DUB run --compiler=$$DC unit-threaded -c gen_ut_main -- -f bin/ut.d -d $DUB"
 }
-
 configuration "it" {
 	dependency "unit-threaded" version=">=0.0.0"
 	targetType "executable"
 	mainSourceFile "tests/it/it_runner.d"
 	sourcePaths "source" "tests/it"
-	importPaths "source" "tests/it"
 	excludedSourceFiles "source/app.d"
+	importPaths "source" "tests/it"
 }

@@ -52,16 +52,19 @@ Registry[] getRegistries() {
 	import privatedub.gitlab.config;
 	import privatedub.gitlab.registry;
 	import privatedub.dlang.registry;
+	import privatedub.dubregistry.registry;
 	import sumtype;
 	import std.algorithm : map, filter, joiner, sort;
 	import std.array : array;
 
-	alias Config = SumType!(GitlabConfig, DlangRegistryConfig);
+	alias Config = SumType!(GitlabConfig, DlangRegistryConfig, DubRegistryRegistryConfig);
 
-	return loadConfig!Config().map!(config => config.match!((GitlabConfig config) => cast(
-			Registry) new GitlabRegistry(config),
-			(DlangRegistryConfig config) => cast(Registry) new DlangRegistry(config))).array()
-		.sort!((a, b) => a.priority < b.priority).release();
+  return loadConfig!Config().map!((config) {
+      return config.match!((GitlabConfig config) => cast(Registry) new GitlabRegistry(config),
+                           (DlangRegistryConfig config) => cast(Registry) new DlangRegistry(config),
+                           (DubRegistryRegistryConfig config) => cast(Registry) new DubRegistryRegistry(config));
+    }).array()
+    .sort!((a, b) => a.priority < b.priority).release();
 }
 
 auto loadConfig(Config)() {
