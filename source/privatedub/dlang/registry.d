@@ -15,7 +15,7 @@ struct DlangRegistryConfig {
 
   enum type = "dub-packages-index";
   string storage = "./storage";
-  int priority = 1;
+  int priority = 2;
 
   static DlangRegistryConfig loadConfig(IniSection section) {
     import std.conv : to;

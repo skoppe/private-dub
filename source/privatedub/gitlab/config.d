@@ -9,7 +9,7 @@ struct GitlabConfig {
   string token;
   string hostname;
   string storage = "./storage";
-  int priority = 2;
+  int priority = 1;
   string prefix;
   string mirror;
   Interceptor interceptor = null;
