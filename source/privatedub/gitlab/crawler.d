@@ -62,12 +62,16 @@ struct FetchVersionedPackageFile {
   int projectId;
   string ref_;
   string commitId;
-  void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config) {
+  void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config, shared GitlabRegistry registry) {
     import privatedub.util : orElse;
 
     auto parseProjectFile(string path) {
       return .parseProjectFile(config, projectId, path, ref_);
     }
+    if (registry.hasProjectRef(projectId, ref_, commitId))
+      return;
+    if (registry.isTagIgnored(projectId, ref_, commitId))
+      return;
 
     auto recipeOpt = parseProjectFile("dub.sdl").orElse(parseProjectFile("dub.json"));
     if (!recipeOpt.isNull) {
@@ -75,6 +79,8 @@ struct FetchVersionedPackageFile {
       queue.enqueue(ProjectVersionedPackage(projectId, VersionedPackage(ref_, commitId, recipe)));
       if (recipe.subPackages.length > 0)
         recipe.subPackages.filter!(sub => sub.path.length > 0).each!(sub => queue.enqueue(FetchProjectSubPackage(projectId, recipe.name, ref_, sub.path)));
+    } else {
+      registry.ignoreTag(projectId, ref_, commitId);
     }
   }
 }
@@ -175,7 +181,9 @@ struct CrawlEvents {
       .filter!(chunk => !projectsToRecrawl.canFind(chunk[0]));
 
     foreach (chunk; chunkedTagsToFetch) {
-      auto next = chunk[1].map!(event => FetchVersionedPackageFile(event.projectId, event.ref_, event.commitId));
+      auto next = chunk[1]
+        .filter!(event => !registry.hasProjectRef(event.projectId, event.ref_, event.commitId) && !registry.isTagIgnored(event.projectId, event.ref_, event.commitId))
+        .map!(event => FetchVersionedPackageFile(event.projectId, event.ref_, event.commitId));
       queue.enqueue(queue.serial(queue.parallel(next.array()), MarkProjectCrawled(chunk[0])));
     }
 

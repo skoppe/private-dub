@@ -44,6 +44,7 @@ class GitlabRegistry : Registry {
 
 private:
   GitlabDubPackage[string] packages;
+  bool[string] ignoredTags;
   GitlabConfig config;
   string packagesPath;
   enum string storageVersion = "3"; // increment when we modify the stuff we save to disk, it will trigger a recrawl
@@ -135,6 +136,23 @@ public:
 
       return packages.byValue.canFind!(p => p.projectId == projectId
           && p.versions.canFind!(v => v.ref_ == ref_ && v.commitId == commitId));
+    }
+  }
+
+  private string tagKey(int projectId, string ref_, string commitId) {
+    import std.format : format;
+    return "%s-%s-%s".format(projectId, ref_, commitId);
+  }
+
+  void ignoreTag(int projectId, string ref_, string commitId) shared {
+    with (lock()) {
+      ignoredTags[tagKey(projectId, ref_, commitId)] = true;
+    }
+  }
+
+  bool isTagIgnored(int projectId, string ref_, string commitId) shared {
+    with (lock()) {
+      return null !is (tagKey(projectId, ref_, commitId) in ignoredTags);
     }
   }
 
