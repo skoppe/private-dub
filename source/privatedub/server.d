@@ -106,7 +106,7 @@ void cgiMainImpl(alias fun, CustomCgi = Cgi, long maxContentLength = defaultMaxC
 				cgi._outputFileHandle = s;
 			}	catch (Exception t) {
 				if (cast(SocketOSException)t is null && cast(ConnectionException)t is null)
-					sendAll(ir.source, plainHttpError(false, "400 Bad Request", t));
+          ir.source.dumpError(t);
         break;
       } catch (Throwable t) {
 				ir.source.close();
@@ -124,6 +124,9 @@ void cgiMainImpl(alias fun, CustomCgi = Cgi, long maxContentLength = defaultMaxC
 				closeConnection = true;
 			}
 			catch (Throwable t) {
+        if (auto exception = cast(Exception)t) {
+          ir.source.dumpError(exception);
+        }
 				ir.source.close();
 				throw t;
 			}
@@ -227,4 +230,13 @@ void cgiMainImpl(alias fun, CustomCgi = Cgi, long maxContentLength = defaultMaxC
     }
 		nursery.run(ThreadSender().then(cast(void delegate() shared @safe)&(new Temp(connection, stopToken)).run));
 	}
+}
+
+import std.socket : Socket;
+void dumpError(Socket s, Exception e) {
+  import std.format : format;
+  auto message = e.msg;
+  try {
+    sendAll(s, "HTTP/1.1 500 Internal Server Error\r\nContent-Length: %s\r\n\r\n%s".format(message.length, message));
+  } catch(Exception e) {}
 }
