@@ -113,9 +113,18 @@ Json toSubPackageDependencyInfo(PackageRecipe p) {
 Json toPackageDependencyInfo(Dependency[string] deps) {
   auto json = Json.emptyObject();
   foreach (key, value; deps) {
-    json[key] = value.versionSpec();
+    json[key] = value.toJson();
   }
   return json;
+}
+
+unittest {
+  import dub.internal.vibecompat.data.json : parseJsonString;
+  import unit_threaded;
+  Dependency[string] deps = ["abc": Dependency.fromJson(parseJsonString(`">=2.0.0"`))];
+  deps.toPackageDependencyInfo.toString.should == `{"abc":">=2.0.0"}`;
+  deps = ["abc": Dependency.fromJson(parseJsonString(`{"version":">=2.0.0", "optional": true}`))];
+  deps.toPackageDependencyInfo.toString.should == `{"abc":{"version":">=2.0.0","optional":true}}`;
 }
 
 Json toPackageDependencyInfo(ConfigurationInfo c) {
