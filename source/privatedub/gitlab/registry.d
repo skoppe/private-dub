@@ -322,10 +322,10 @@ public:
     with (lock()) {
       import std.file : write;
 
-      if (!lastCrawl.isNull && lastCrawl.get == yesterday)
+      if (!lastCrawl.isNull && lastCrawl.get == yesterdayish)
         return;
 
-      lastCrawl = Nullable!Date(yesterday);
+      lastCrawl = Nullable!Date(yesterdayish);
       write(lastCrawlFile, lastCrawl.get.toISOExtString);
       write(versionFile, storageVersion);
     }
@@ -454,10 +454,10 @@ public:
   }
 }
 
-Date yesterday() {
-  import std.datetime.systime;
-
-  return Date().fromISOExtString(Clock.currTime().roll!"days"(-1).toISOExtString()[0 .. 10]);
+private Date yesterdayish() {
+  import std.datetime.systime : Clock;
+  import core.time : hours;
+  return cast(typeof(return))(Clock.currTime() - 25.hours);
 }
 
 unittest {
