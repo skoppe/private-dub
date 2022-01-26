@@ -235,6 +235,8 @@ void cgiMainImpl(alias fun, CustomCgi = Cgi, long maxContentLength = defaultMaxC
 import std.socket : Socket;
 void dumpError(Socket s, Exception e) {
   import std.format : format;
+  import std.experimental.logger;
+  error(e);
   auto message = e.msg;
   try {
     sendAll(s, "HTTP/1.1 500 Internal Server Error\r\nContent-Length: %s\r\n\r\n%s".format(message.length, message));
