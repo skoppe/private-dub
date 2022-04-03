@@ -81,6 +81,23 @@ public:
 
   void validate() {}
 
+  string getPackageUrl(string name) {
+    import std.algorithm : find;
+    import std.range : front, empty;
+    import std.format : format;
+
+    auto meta = getPackage(name);
+    auto repo = meta["repository"];
+    auto kind = repo["kind"].get!string;
+    auto owner = repo["owner"].get!string;
+    auto project = repo["project"].get!string;
+    if (kind == "github")
+      return "https://github.com/%s/%s".format(owner, project);
+    else if (kind == "gitlab")
+      return "https://gitlab.com/%s/%s".format(owner, project);
+    throw new Exception(kind ~ " is not supported");
+  }
+
   PackageMeta[] search(string name) {
     // note we don't actually search, just match a single package and return if found
     return [getPackageMeta(name)];

@@ -77,6 +77,22 @@ public:
 
   void validate() {}
 
+  string getPackageUrl(string name) {
+    import std.algorithm : startsWith;
+    import std.exception : enforce;
+    import std.conv : text;
+    import std.format : format;
+    auto pack = getPackage(name);
+    enforce(!pack.isNull, "Cannot find package "~name);
+
+    auto repo = pack.get["repository"];
+    auto domain = repo["kind"].get!string.getRepositoryDomain();
+    auto owner = repo["owner"].get!string;
+    auto project = repo["project"].get!string;
+
+    return format("https://%s/%s/%s", domain, owner, project);
+  }
+
   PackageMeta[] search(string name) {
     // note we don't actually search, just match a single package and return if found
     return [getPackageMeta(name)];
@@ -137,7 +153,7 @@ public:
     auto packages = `["`~name~`"]`;
     auto url = config.upstream ~ "/api/packages/infos";
     url.queryParams.add("packages", packages);
-    url.queryParams.add("minimize", "true");
+    url.queryParams.add("minimize", "false");
     auto rq = Request();
     auto response = rq.get(url);
     auto content = parseJsonString(cast(string) response.responseBody.data)[name];
@@ -146,5 +162,14 @@ public:
     }
     cache[name] = CacheEntry(now, content);
     return Nullable!Json(content);
+  }
+}
+
+private string getRepositoryDomain(string kind) {
+  switch (kind) {
+  case "github": return "github.com";
+  case "gitlab": return "gitlab.com";
+  default:
+    throw new Exception("Unknown repository "~kind);
   }
 }

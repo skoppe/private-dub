@@ -200,6 +200,18 @@ public:
     enforce(validateToken(Token(AccessToken(config.token))), "invalid token in configuration for hostname = "~config.hostname);
   }
 
+  string getPackageUrl(string name) {
+    import std.algorithm : startsWith;
+    import std.exception : enforce;
+    import std.conv : text;
+    auto pack = findPackage(name);
+    enforce(!pack.isNull, "Cannot find package "~name);
+
+    auto response = config.getProject(pack.get.projectId);
+    enforce(response.isOk, text("Cannot find project ", pack.get.projectId));
+    return response.content.tryMatch!((JsonContent content) => content.json["web_url"].get!string);
+  }
+
   override string toString() {
     import std.format : format;
     return "gitlab(hostname = %s, prefix = %s)".format(config.hostname, config.prefix);

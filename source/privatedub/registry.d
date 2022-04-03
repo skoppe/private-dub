@@ -48,6 +48,7 @@ interface Registry {
   ZipArchive mirror();
   bool validateToken(Token token);
   void validate();
+  string getPackageUrl(string name);
 }
 
 @("Ensure we can use slash in name and dependency")
