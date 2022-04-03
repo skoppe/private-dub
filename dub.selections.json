@@ -24,7 +24,7 @@
 		"optional": "1.0.0",
 		"requests": "1.1.5",
 		"stdx-allocator": "2.77.5",
-		"sumtype": "0.9.4",
+		"sumtype": "0.9.6",
 		"taggedalgebraic": "0.11.16",
 		"test_allocator": "0.3.3",
 		"unit-threaded": "1.0.4",

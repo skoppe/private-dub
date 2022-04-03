@@ -14,8 +14,9 @@ import std.json : JSONValue;
 struct FindProjects {
   void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config,
       shared GitlabRegistry registry) {
+    import std.array : join;
     auto projects = config.callProjectsEndpoint().paginate()
-      .map!(p => p.content.tryMatch!((JsonContent content) => content.json.array)).joiner();
+      .map!(p => p.content.tryMatch!((JsonContent content) => content.json.array)).join();
     foreach (project; projects) {
       auto id = cast(int) project["id"].integer;
       if (registry.hasProject(id)) {
@@ -40,6 +41,7 @@ struct FetchTags {
   void run(WorkQueue)(ref WorkQueue queue, GitlabConfig config,
                       shared GitlabRegistry registry) {
     import std.json;
+    import std.array : join;
 
     auto tags = config.getProjectTags(projectId).paginate()
       .map!(p => p.content.tryMatch!((JsonContent content) {
@@ -50,7 +52,7 @@ struct FetchTags {
             JSONValue[] json;
             return json;
           }
-        })).joiner();
+        })).join();
     foreach (tag; tags) {
       if (!registry.hasProjectRef(projectId, tag["name"].str, tag["commit"]["id"].str))
         queue.enqueue(FetchVersionedPackageFile(projectId, tag["name"].str, tag["commit"]["id"].str));
@@ -144,10 +146,11 @@ struct CrawlEvents {
       shared GitlabRegistry registry) {
     import std.array : appender, array;
     import std.algorithm : sort, chunkBy, map, filter, canFind;
+    import std.array : join;
 
     // TODO: this misses mirrored projects
     auto events = config.getEvents("pushed", after).paginate()
-      .map!(p => p.content.tryMatch!((JsonContent content) => content.expectJSONArray())).joiner();
+      .map!(p => p.content.tryMatch!((JsonContent content) => content.expectJSONArray())).join();
 
     auto singleTagEvents = appender!(SingleTagEvent[]);
     auto multipleTagEvents = appender!(MultipleTagEvent[]);
