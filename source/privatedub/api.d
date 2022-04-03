@@ -71,19 +71,21 @@ SenderObjectBase!void getPackages(MatchedPath path, Registry[] registries, Cgi c
   import asdf;
   import std.string : stripLeft;
 
-  string q = path.query["q"];
-  auto package_ = PackageName.parse(q);
-  auto reg = registries.findRegistry(package_);
-  cgi.setResponseContentType("application/json");
-  cgi.setResponseStatus("200 Ok");
-  if (reg.isNull) {
-    cgi.write(`[]`);
-  } else {
-    auto results = reg.get().search(package_.base);
-    auto sr = results.map!(result => SearchResult(result.name, null, result.versions.highestVersion().stripLeft("v")));
-    cgi.write(sr.serializeToJson());
-  }
-  cgi.close();
+  path.query.getOpt("q").andThen!((q){
+      auto package_ = PackageName.parse(q);
+      auto reg = registries.findRegistry(package_);
+      cgi.setResponseContentType("application/json");
+      cgi.setResponseStatus("200 Ok");
+      if (reg.isNull) {
+        cgi.write(`[]`);
+      } else {
+        auto results = reg.get().search(package_.base);
+        auto sr = results.map!(result => SearchResult(result.name, null, result.versions.highestVersion().stripLeft("v")));
+        cgi.write(sr.serializeToJson());
+      }
+      cgi.close();
+    })
+    .orElse!(() => cgi.setResponseStatus("400 Bad Request"));
   return null;
 }
 
@@ -95,17 +97,20 @@ SenderObjectBase!void getInfos(MatchedPath path, Registry[] registries, Cgi cgi)
   import std.format : format;
   import std.exception : enforce;
 
-  Json packages = parseJsonString(path.query["packages"]);
-  enforce(packages.length > 0, "must request at least one package");
-  auto aa = resolve(registries, packages[0].get!string);
-  cgi.setResponseContentType("application/json");
-  cgi.setResponseStatus("200 Ok");
-  if (aa.length == 0) {
-    cgi.write(`{"%s":null}`.format(packages[0].get!string));
-  } else {
-    cgi.write(aa.toPackageDependencyInfo.toString());
-  }
-  cgi.close();
+  path.query.getOpt("packages").andThen!((rawPackages){
+      Json packages = parseJsonString(rawPackages);
+      enforce(packages.length > 0, "must request at least one package");
+      auto aa = resolve(registries, packages[0].get!string);
+      cgi.setResponseContentType("application/json");
+      cgi.setResponseStatus("200 Ok");
+      if (aa.length == 0) {
+        cgi.write(`{"%s":null}`.format(packages[0].get!string));
+      } else {
+        cgi.write(aa.toPackageDependencyInfo.toString());
+      }
+      cgi.close();
+    })
+    .orElse!(() => cgi.setResponseStatus("400 Bad Request"));
   return null;
 }
 
