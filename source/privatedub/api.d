@@ -48,7 +48,7 @@ auto api(Registry[] registries) {
   return nursery;
 }
 
-alias Routes = AliasSeq!(getInfos, getDownloadUri, getPackages, isReadyForQueries, mirror, packages, crawlProject);
+alias Routes = AliasSeq!(getInfos, getDownloadUri, getUrl, getPackages, isReadyForQueries, mirror, packages, crawlProject);
 
 struct NullToken {
 }
@@ -106,6 +106,30 @@ SenderObjectBase!void getInfos(MatchedPath path, Registry[] registries, Cgi cgi)
     cgi.write(aa.toPackageDependencyInfo.toString());
   }
   cgi.close();
+  return null;
+}
+
+@(Path("/token/$token/api/packages/url"))
+@(Path("/oauthtoken/$oauthtoken/api/packages/url"))
+@(Path("/api/packages/url"))
+SenderObjectBase!void getUrl(MatchedPath path, Registry[] registries, Cgi cgi) {
+  import dub.internal.vibecompat.data.json : Json, parseJsonString;
+  import std.format : format;
+  import std.exception : enforce;
+
+  auto name = path.query.getOpt("name");
+  name.andThen!((name) {
+      registries.findRegistry(PackageName.parse(name))
+        .andThen!((reg) => reg.getPackageUrl(name))
+        .andThen!((uri){
+            cgi.setResponseContentType("application/json");
+            cgi.setResponseStatus("200 Ok");
+            cgi.write("\""~uri~"\"");
+            cgi.close();
+          })
+        .orElse!(() => cgi.setResponseStatus("404 Not Found"));
+    })
+    .orElse!(() => cgi.setResponseStatus("400 Bad Request"));
   return null;
 }
 
@@ -272,7 +296,7 @@ struct MatchedPath {
   string[string] params;
 }
 
-Nullable!string getOpt(string[string] params, string key) {
+Nullable!string getOpt(T)(T params, string key) {
   if (auto v = key in params)
     return typeof(return)(*v);
   return typeof(return).init;
