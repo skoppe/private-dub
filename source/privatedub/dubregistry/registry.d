@@ -82,7 +82,7 @@ public:
     import std.exception : enforce;
     import std.conv : text;
     import std.format : format;
-    auto pack = getPackage(name);
+    auto pack = getPackage(name, false);
     enforce(!pack.isNull, "Cannot find package "~name);
 
     auto repo = pack.get["repository"];
@@ -103,7 +103,7 @@ public:
     import privatedub.dlang.registry : normalizeVersion;
     import std.array : array;
 
-    auto content = getPackage(name);
+    auto content = getPackage(name, true);
     if (content.isNull)
       throw new Exception("Not found");
 
@@ -115,7 +115,7 @@ public:
   }
 
   bool hasPackage(string name) {
-    return !getPackage(name).isNull;
+    return !getPackage(name, true).isNull;
   }
 
   Nullable!string getDownloadUri(string name, string rawVer, Token token) {
@@ -138,29 +138,33 @@ public:
     return "dub-registry @ "~config.upstream;
   }
 
-  private Nullable!Json getPackage(string name) {
+  private Nullable!Json getPackage(string name, bool minimize) {
     import std.datetime.systime : Clock;
     import core.time : minutes;
     import std.uri : encodeComponent;
     import requests : Request;
 
     auto now = cast(DateTime)Clock.currTime;
-    if (auto c = name in cache) {
-      if (c.time + 3.minutes > now) {
-        return Nullable!Json(c.content);
+    if (minimize) {
+      if (auto c = name in cache) {
+        if (c.time + 3.minutes > now) {
+          return Nullable!Json(c.content);
+        }
       }
     }
     auto packages = `["`~name~`"]`;
     auto url = config.upstream ~ "/api/packages/infos";
     url.queryParams.add("packages", packages);
-    url.queryParams.add("minimize", "false");
+    // minimize == false will return data that is unparsable by dub *itself*, but we need it to resolve a package's url...
+    url.queryParams.add("minimize", minimize ? "true" : "false");
     auto rq = Request();
     auto response = rq.get(url);
     auto content = parseJsonString(cast(string) response.responseBody.data)[name];
     if (content.type == Json.Type.null_) {
       return Nullable!Json();
     }
-    cache[name] = CacheEntry(now, content);
+    if (minimize)
+      cache[name] = CacheEntry(now, content);
     return Nullable!Json(content);
   }
 }
