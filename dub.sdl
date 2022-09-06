@@ -3,25 +3,29 @@ description "A private dub registry"
 authors "skoppe"
 copyright "Copyright © 2020, skoppe"
 license "MIT"
-dependency "requests" version="~>1.1.5"
-dependency "dub" version="~>1.22.0"
-dependency "concurrency" version="~>4.0.0"
-dependency "urld" version="~>2.1.1"
+
+dependency "requests" version="~>1.1"
+dependency "dub" version="~>1.29"
+dependency "concurrency" version="~>4.0"
+dependency "urld" version="~>2.1"
 dependency "concepts" version="~>0.0.8"
 dependency "sumtype" version="~>0.9.6"
-dependency "arsd-official:cgi" version="~>8.2.0"
-dependency "asdf" version="~>0.5.7"
-dependency "dini" version="~>2.0.0"
-dependency "unit-threaded" version="~>1.0.4"
-dependency "optional" version="~>1.0.0"
+dependency "arsd-official:cgi" version="~>8.2"
+dependency "asdf" version="~>0.5"
+dependency "dini" version="~>2.0"
+dependency "unit-threaded" version="~>1.0"
+dependency "optional" version="~>1.0"
+
 targetType "executable"
 configuration "executable" {
 	targetType "executable"
 }
+
 configuration "musl" {
 	targetType "executable"
 	dflags "-static" platform="linux-ldc"
 }
+
 configuration "unittest" {
 	dependency "unit-threaded" version=">=0.0.0"
 	targetType "executable"
@@ -29,6 +33,7 @@ configuration "unittest" {
 	excludedSourceFiles "source/app.d"
 	preBuildCommands "$DUB run --compiler=$$DC unit-threaded -c gen_ut_main -- -f bin/ut.d -d $DUB"
 }
+
 configuration "it" {
 	dependency "unit-threaded" version=">=0.0.0"
 	targetType "executable"
