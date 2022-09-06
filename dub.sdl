@@ -16,13 +16,14 @@ dependency "dini" version="~>2.0"
 dependency "unit-threaded" version="~>1.0"
 dependency "optional" version="~>1.0"
 
-targetType "executable"
 configuration "executable" {
 	targetType "executable"
+	mainSourceFile "source/app.d"
 }
 
 configuration "musl" {
 	targetType "executable"
+	mainSourceFile "source/app.d"
 	dflags "-static" platform="linux-ldc"
 }
 
@@ -30,7 +31,6 @@ configuration "unittest" {
 	dependency "unit-threaded" version=">=0.0.0"
 	targetType "executable"
 	mainSourceFile "bin/ut.d"
-	excludedSourceFiles "source/app.d"
 	preBuildCommands "$DUB run --compiler=$$DC unit-threaded -c gen_ut_main -- -f bin/ut.d -d $DUB"
 }
 
@@ -39,6 +39,5 @@ configuration "it" {
 	targetType "executable"
 	mainSourceFile "tests/it/it_runner.d"
 	sourcePaths "source" "tests/it"
-	excludedSourceFiles "source/app.d"
 	importPaths "source" "tests/it"
 }
